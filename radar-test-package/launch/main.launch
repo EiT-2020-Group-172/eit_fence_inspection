@@ -12,7 +12,7 @@
 
     <!-- vehicle model and world -->
     <arg name="est" default="ekf2"/>
-    <arg name="vehicle" default="sdu_drone"/>
+    <arg name="vehicle" default="sdu_drone_depth_cam"/>
     <arg name="env" default="optitrack"/>
     <arg name="world" default="$(find eit_playground)/worlds/$(arg env).world"/>
     <arg name="sdf" default="$(find eit_playground)/models/$(arg vehicle)/$(arg vehicle).sdf"/>
