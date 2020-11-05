@@ -1,3 +1,4 @@
 # add generated files and folder
 */.vscode/
 */build/
+*.pyc
