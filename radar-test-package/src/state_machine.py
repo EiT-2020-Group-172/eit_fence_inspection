@@ -98,12 +98,12 @@ class StateMachine():
             pid_out = self.yaw_pid(angle_error)
             current_yaw = orientation_to_yaw(self.mav1.current_pose.pose.orientation)
             target_yaw = current_yaw + pid_out
-            self._mav1.set_target_yaw(target_yaw)
+            self.mav1.set_target_yaw(target_yaw)
         
         elif cur == self.States.ALIGN_POS:
             if self.pose_error == None:
                 return
-            if not self._mav1.has_arrived():
+            if not self.mav1.has_arrived():
                 return
             err = point_to_arr(self.pose_error.position)
             self.pose_error = None
