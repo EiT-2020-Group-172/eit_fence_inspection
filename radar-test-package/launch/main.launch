@@ -6,5 +6,5 @@
 
     <!-- <node name="radar" pkg="power-line-inspection" type="radar.py" output="screen" required="true"/> -->
 
-    <!-- <node name="control" pkg="power-line-inspection" type="main.py" output="screen" required="true"/> -->
+    <node name="main_control" pkg="radar-test-package" type="main.py" output="screen" required="true"/>
 </launch>

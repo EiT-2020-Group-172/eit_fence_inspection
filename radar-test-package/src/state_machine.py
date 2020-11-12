@@ -57,7 +57,7 @@ class StateMachine():
         self._next_value = state
     
     def set_current_state(self, state):
-        print("NEW STATE: " + str(state))
+        rospy.loginfo("NEW STATE: " + str(state))
         self._current_value = state
     
     def execute(self):
@@ -73,13 +73,13 @@ class StateMachine():
             target = Point(0, 0, 10)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
-            self.set_next_state(self.States.UNDER_WIRE)
+            self.set_next_state(self.States.INITIAL_POSITIONS)
 
-        elif cur == self.States.UNDER_WIRE:
+        elif cur == self.States.INITIAL_POSITIONS:
             target = Point(-35.2, 30, 11)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
-            self.set_next_state(self.States.ALIGN_YAW)
+            self.set_next_state(self.States.IDLE)
             self.pose_error = None
 
         elif cur == self.States.ALIGN_YAW:
@@ -89,10 +89,10 @@ class StateMachine():
                 return
             angle_error = orientation_to_yaw(self.pose_error.orientation)
             self.pose_error = None
-            print("angle error "+str(angle_error))
+            rospy.loginfo("angle error "+str(angle_error))
             if abs(angle_error) < self.max_align_error:
                 self.set_current_state(self.States.ALIGN_POS)
-                print("YAW ALIGNED")
+                rospy.loginfo("YAW ALIGNED")
                 self.max_align_error -= 0.01
                 return
             pid_out = self.yaw_pid(angle_error)
@@ -108,10 +108,10 @@ class StateMachine():
             err = point_to_arr(self.pose_error.position)
             self.pose_error = None
             magnitude = np.linalg.norm(err)
-            print("pos error "+str(magnitude))
+            rospy.loginfo("pos error "+str(magnitude))
             if magnitude < self.max_align_error*20:
                 self.set_current_state(self.States.ALIGN_YAW)
-                print("POS ALIGNED")
+                rospy.loginfo("POS ALIGNED")
                 self.max_align_error -= 0.01
                 return
             current_pos = point_to_arr(self.mav1.current_pose.pose.position)
