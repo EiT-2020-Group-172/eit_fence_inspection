@@ -53,8 +53,8 @@ class Mav():
         self.current_velocity = topic
     
     def _publish_target_pose(self):
-        self._setpoint_local_pub.publish(self.target_pose)
-        # self._setpoint_local_pub.publish(self.distance_limited_target())
+        # self._setpoint_local_pub.publish(self.target_pose)
+        self._setpoint_local_pub.publish(self.distance_limited_target())
     
     def distance_limited_target(self):
         point = self.target_pose.pose.position

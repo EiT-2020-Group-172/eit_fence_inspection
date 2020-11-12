@@ -70,13 +70,13 @@ class StateMachine():
                 self.set_current_state(self._next_value)
 
         elif cur == self.States.TAKE_OFF:
-            target = Point(0, 0, 10)
+            target = Point(0, 0, 1)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.INITIAL_POSITIONS)
 
         elif cur == self.States.INITIAL_POSITIONS:
-            target = Point(-35.2, 30, 11)
+            target = Point(0, 0.5, 1.5)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.IDLE)
