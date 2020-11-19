@@ -20,6 +20,8 @@ class StateMachine():
         ALIGN_WIRE = "align"
         ALIGN_YAW = "align_yaw"
         ALIGN_POS = "align_pos"
+        BEAM = "beam"
+        BACK = "back"
 
     def __init__(self):
         self._current_value = self.States.IDLE
@@ -73,13 +75,21 @@ class StateMachine():
             target = Point(0, 0, 1)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
-            self.set_next_state(self.States.INITIAL_POSITIONS)
+            self.set_next_state(self.States.BEAM)
 
-        elif cur == self.States.INITIAL_POSITIONS:
-            target = Point(0, 0.5, 1.5)
+        elif cur == self.States.BEAM:
+            target = Point(4.6, 0.5, 1.5)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
-            self.set_next_state(self.States.IDLE)
+            self.set_next_state(self.States.BACK)
+            self.pose_error = None
+
+
+        elif cur == self.States.BACK:
+            target = Point(-4.6, 0.5, 1.5)
+            self.mav1.set_target_pos(target)
+            self.set_current_state(self.States.WAITING_TO_ARRIVE)
+            self.set_next_state(self.States.BEAM)
             self.pose_error = None
 
         elif cur == self.States.ALIGN_YAW:

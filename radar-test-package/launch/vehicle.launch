@@ -6,7 +6,7 @@
     <!-- Posix SITL environment launch script -->
     <!-- launches PX4 SITL, Gazebo environment, and spawns vehicle -->
     <!-- vehicle pose -->
-    <arg name="x" default="-3"/>
+    <arg name="x" default="0"/>
     <arg name="y" default="5.5"/>
     <arg name="z" default="0.1"/>
     <arg name="R" default="0"/>
