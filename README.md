@@ -30,9 +30,14 @@ export PX4_HOME_ALT=7.4000000 &&
 echo exported \
 "
 
-alias build_eit="
+alias setup_eit="
 source_eit &&
 export_eit &&
+echo set up \
+"
+
+alias build_eit="
+setup_eit &&
 cd ~/catkin_ws/ &&
 catkin build &&
 source_eit &&
