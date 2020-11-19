@@ -4,7 +4,7 @@
     <include file="$(find radar-test-package)/launch/env.launch">
     </include>
 
-    <!-- <node name="radar" pkg="power-line-inspection" type="radar.py" output="screen" required="true"/> -->
+    <node name="depth_image_processing" pkg="radar-test-package" type="cam.py" output="screen" required="true"/>
 
-    <node name="main_control" pkg="radar-test-package" type="main.py" output="screen" required="true"/>
+    <node name="main_control" pkg="radar-test-package" type="control.py" output="screen" required="true"/>
 </launch>
