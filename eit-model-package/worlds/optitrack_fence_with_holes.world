@@ -1,4 +1,4 @@
-optitrack_fence_with_holes<?xml version="1.0" ?>
+<?xml version="1.0" ?>
 <sdf version="1.5">
   <world name="map">
     <!-- A global light source -->

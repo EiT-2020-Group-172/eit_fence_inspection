@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="world_name" default="optitrack_fence_without_holes"/>
+    <arg name="world_name" default="optitrack_fence_with_holes"/>
     <arg name="world" default="$(find eit-model-package)/worlds/$(arg world_name).world"/>
 
     <!-- gazebo configs -->
