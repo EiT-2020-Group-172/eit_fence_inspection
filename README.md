@@ -23,7 +23,7 @@ alias source_eit="
 source /opt/ros/melodic/setup.bash &&
 source ~/catkin_ws/devel/setup.bash &&
 source ~/Firmware/Tools/setup_gazebo.bash /home/$USER/Firmware /home/$USER/Firmware/build/px4_sitl_default &&
-source ~/catkin_ws/src/eit_playground/setup_gazebo.bash && 
+source ~/catkin_ws/src/eit_playground/setup_gazebo.bash &&
 echo sourced \
 "
 
