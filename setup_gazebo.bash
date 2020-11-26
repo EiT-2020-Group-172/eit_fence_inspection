@@ -10,7 +10,7 @@ source $FWDIR/Tools/setup_gazebo.bash $FWDIR $FWDIR/build/px4_sitl_default
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$FWDIR
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$FWDIR/Tools/sitl_gazebo
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$ROSWS/src/eit_playground/models
-export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$ROSWS/src/eit_fence_inspection/models
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$ROSWS/src/eit_fence_inspection/eit-model-package/models
 
 
 export PX4_HOME_LAT=55.4719762
