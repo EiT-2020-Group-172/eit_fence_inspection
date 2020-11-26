@@ -6,7 +6,7 @@ from geometry_msgs.msg import TwistStamped, PoseStamped, PoseWithCovarianceStamp
 import rospy
 from simple_pid import PID
 
-from message_tools import orientation_to_yaw, point_to_arr, arr_to_point
+from message_tools import orientation_to_yaw, point_to_arr, arr_to_point, create_setpoint_message_xyz_yaw
 
 class StateMachine():
     class States(Enum):
@@ -72,13 +72,13 @@ class StateMachine():
                 self.set_current_state(self._next_value)
 
         elif cur == self.States.TAKE_OFF:
-            target = Point(0, 0, 1)
-            self.mav1.set_target_pos(target)
+            yaw = -1.57079633
+            self.mav1.set_target_pose(create_setpoint_message_xyz_yaw(0, 0, 1, yaw))
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.BEAM)
 
         elif cur == self.States.BEAM:
-            target = Point(4.6, 0.5, 1.5)
+            target = Point(4.6, 1, 1.0)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.BACK)
@@ -86,7 +86,7 @@ class StateMachine():
 
 
         elif cur == self.States.BACK:
-            target = Point(-4.6, 0.5, 1.5)
+            target = Point(-4.6, 1, 1.0)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.BEAM)
