@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="world_name" default="optitrack"/>
-    <arg name="world" default="$(find eit_playground)/worlds/$(arg world_name).world"/>
+    <arg name="world" default="$(find eit-model-package)/worlds/$(arg world_name).world"/>
 
     <!-- gazebo configs -->
     <arg name="gui" default="true"/>
