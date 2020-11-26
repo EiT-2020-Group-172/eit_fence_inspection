@@ -20,7 +20,7 @@
 
     <!-- Fence setup -->
     <model name="fences_with_holes">
-      <pose>-3 -4.3 0 0 0 0</pose>
+      <pose>-3 -4.5 0 0 0 0</pose>
       <include>
         <uri>model://fences_with_holes</uri>
       </include>
@@ -28,7 +28,7 @@
 
     <!-- Fence setup -->
     <model name="fences_without_holes1">
-      <pose>-3 4.3 0 0 0 0</pose>
+      <pose>-3 4.5 0 0 0 0</pose>
       <include>
         <uri>model://fences_without_holes</uri>
       </include>
@@ -36,7 +36,7 @@
 
     <!-- Fence setup -->
     <model name="fences_without_holes2">
-      <pose>-4.3 -3 0 0 0 1.57079633</pose>
+      <pose>-4.5 -3 0 0 0 1.57079633</pose>
       <include>
         <uri>model://fences_without_holes</uri>
       </include>
@@ -44,7 +44,7 @@
 
     <!-- Fence setup -->
     <model name="fences_without_holes3">
-      <pose>4.3 -3 0 0 0 1.57079633</pose>
+      <pose>4.5 -3 0 0 0 1.57079633</pose>
       <include>
         <uri>model://fences_without_holes</uri>
       </include>
