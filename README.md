@@ -2,6 +2,12 @@
 
 For this project to work, you must have the *eit_playground* folder in the same *src* folder as this repository.
 
+Structure should be the following:
+```
+home/$USER/catkin_ws/src/eit_playground
+home/$USER/catkin_ws/src/eit_fence_inspection
+```
+
 ROS packages are folders in the root of this repository.
 Adding new package:
 ```
