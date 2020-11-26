@@ -22,7 +22,6 @@ Useful *.bashrc* setup for the project, if you put this repository inside *~/cat
 alias source_eit="
 source /opt/ros/melodic/setup.bash &&
 source ~/catkin_ws/devel/setup.bash &&
-source ~/catkin_ws/src/eit_playground/setup_gazebo.bash && 
 source /home/$USER/Firmware/Tools/setup_gazebo.bash /home/$USER/Firmware /home/$USER/Firmware/build/px4_sitl_default &&
 echo sourced \
 "
@@ -30,6 +29,8 @@ echo sourced \
 alias export_eit="
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/Firmware &&
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/Firmware/Tools/sitl_gazebo &&
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$PWD/src/eit_playground/models &&
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$PWD/src/eit_fence_inspection/models &&
 export PX4_HOME_LAT=55.4719762 &&
 export PX4_HOME_LON=10.3248095 &&
 export PX4_HOME_ALT=7.4000000 &&
