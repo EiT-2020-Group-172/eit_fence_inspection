@@ -22,7 +22,8 @@ Useful *.bashrc* setup for the project, if you put this repository inside *~/cat
 alias source_eit="
 source /opt/ros/melodic/setup.bash &&
 source ~/catkin_ws/devel/setup.bash &&
-source /home/$USER/Firmware/Tools/setup_gazebo.bash /home/$USER/Firmware /home/$USER/Firmware/build/px4_sitl_default &&
+source ~/Firmware/Tools/setup_gazebo.bash /home/$USER/Firmware /home/$USER/Firmware/build/px4_sitl_default &&
+source ~/catkin_ws/src/eit_playground/setup_gazebo.bash && 
 echo sourced \
 "
 
