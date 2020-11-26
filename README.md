@@ -1,6 +1,7 @@
 # Fence inspection repository of ROS packages
 
-For this project to work, you must have the *eit_playground* folder in the same *src* folder as this repository.
+This project requires Ubuntu 18, ROS Melodic, and MAVROS to be installed and PX4 Autopilot Firmware and EIT Playground to be downloaded and built.
+The *eit_playground* folder must be in the same *src* folder as this repository, inside your ROS workspace folder.
 
 Structure should be the following:
 ```
@@ -17,7 +18,7 @@ catkin_create_pkg <package name> <dependencies[]>
 catkin_create_pkg my-super-package std_msgs rospy roscpp
 ```
 
-Useful *.bashrc* setup for the project. Change FWDIR and ROSWS with your own values. This will source, export, and build everything.
+Useful *.bashrc* setup for the project. Change FWDIR and ROSWS with your own values. This will source, export, and build everything when you call *eitbuild* in bash.
 ```
 function eitsetup {
   FWDIR=~/Firmware
