@@ -4,3 +4,6 @@
 [submodule "packages/serial"]
 	path = packages/serial
 	url = https://github.com/wjwwood/serial.git
+[submodule "packages/ti_mmwave_rospkg"]
+	path = packages/ti_mmwave_rospkg
+	url = https://github.com/radar-lab/ti_mmwave_rospkg.git
