@@ -9,9 +9,9 @@ import argparse
 class PointCloudSampler:
     def __init__(
             self,
-            node_name="point_cloud_sampler",
+            node_name="/point_cloud_sampler",
             in_topic="/ti_mmwave/radar_scan_pcl",
-            out_topic="/sampled_pcl",
+            out_topic="sampled_pcl",
             sample_n=5
     ):
         self.node_name = node_name
@@ -27,7 +27,7 @@ class PointCloudSampler:
         self.pub = rospy.Publisher(
                 self.node_name + self.out_topic,
                 PointCloud2,
-                queue_size=1
+                queue_size=10
         )
 
         rospy.Subscriber(
@@ -53,9 +53,6 @@ class PointCloudSampler:
             sampled_pcl = np.concatenate(tuple(self.point_cloud_buffer))
 
             self.pub.publish(array_to_pointcloud2(sampled_pcl))
-
-    def start(self):
-        rospy.spin()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Samples PointCloud2 msgs into combined msgs.")
@@ -114,4 +111,4 @@ if __name__ == "__main__":
             sample_n=args.samples
     )
 
-    pcl_sampler.start()
+    rospy.spin()
