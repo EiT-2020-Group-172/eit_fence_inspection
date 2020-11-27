@@ -5,13 +5,14 @@ import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_array, array_to_pointcloud2
 from sensor_msgs.msg import PointCloud2
 import argparse
+import sys
 
 class PointCloudSampler:
     def __init__(
             self,
             node_name="/point_cloud_sampler",
             in_topic="/ti_mmwave/radar_scan_pcl",
-            out_topic="sampled_pcl",
+            out_topic="/sampled_pcl",
             sample_n=5
     ):
         self.node_name = node_name
@@ -96,6 +97,8 @@ def parse_args():
             default=5,
             help="The number of sampled messages to combine into one message"
     )
+
+    sys.argv = rospy.myargv(argv=sys.argv)
 
     args = parser.parse_args()
 
