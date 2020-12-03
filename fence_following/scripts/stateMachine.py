@@ -9,6 +9,8 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 from mavros_msgs.msg import State, PositionTarget
 import mavros_msgs.srv
+from radar_test_package.mav import Mav 
+import radar_test_package.message_tools as msgt
 
 def yaw_to_orientation(yaw):
     quat_tf = quaternion_from_euler(0, 0, yaw)
@@ -16,7 +18,7 @@ def yaw_to_orientation(yaw):
     return ori
 
 def quatToRotation(quaternion):
-    print(quaternion.x)
+    #print(quaternion.x)
     return R.from_quat([quaternion.x,quaternion.y,quaternion.z,quaternion.w])
     
 def angleToRotation(angle):
@@ -26,17 +28,19 @@ def angleToRotation(angle):
 class stateMachine():
     def __init__(self):
         print("Init")
-        self.desiredDistance=5  
+        rospy.init_node('stateMachine', anonymous=True)
+        self.desiredDistance=0  
         self.closerInspection=False
         self.endOfFenceReached=False
         self.current_pose = PoseStamped()
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
+        self.mav = Mav()
 
         # setup subscriber
 
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
-        self._fenceDistance_sub = rospy.Subscriber('/mavros/eit/fence/pose', Vector3, self._fenceDistanceCallback) # change topic and message type
+        self._fenceDistance_sub = rospy.Subscriber('/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
 
         # setup publisher
@@ -52,8 +56,8 @@ class stateMachine():
 
         #https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
 
-        rospy.init_node('stateMachine', anonymous=True)
 
+        
 
 
     def isEndOfendFenceReached(self):
@@ -65,7 +69,7 @@ class stateMachine():
         
 
     def _fenceDistanceCallback(self, data):
-        print("Got Message")
+        #print("Got Message")
         # get fence location data, command drone to adjust position according to data, can give a drone 
         # position in local coordinates and a yaw angle. 
         # angle is zero if drone is paralel to fence
@@ -73,7 +77,6 @@ class stateMachine():
             pass
         else:
             self.current_fence_pose = data
-            self._adjust_drone_pos()
 
     def _adjust_drone_pos(self):
         #setpointMsg=PoseStamped()
@@ -82,9 +85,9 @@ class stateMachine():
             frame_id="att_pose",
             stamp=rospy.Time.now()),
         )
-        distanceError=self.desiredDistance - self.current_fence_pose.y
+        distanceError=self.desiredDistance - self.current_fence_pose.x
         current_rot=quatToRotation(self.current_pose.pose.orientation)
-        current_rot=current_rot*angleToRotation(self.current_fence_pose.x)  # as dcm?
+        current_rot=current_rot*angleToRotation(self.current_fence_pose.y)  # as dcm?
         current_rot_as_dcm=current_rot.as_dcm()
         
         #distanceToAdjust=current_rot_as_dcm*current_rot_as_dcm
@@ -93,11 +96,11 @@ class stateMachine():
         distanceToAdjust=arr2.dot(current_rot_as_dcm)+arr1.dot(current_rot_as_dcm)
         #distanceToAdjust=current_rot_as_dcm*[0,distanceError,0]#+current_rot_as_dcm*[0.5,0,0]
         #distanceToAdjust=current_rot*[0,distanceError,0]+current_rot*[0.5,0,0]
-        print(distanceToAdjust)
-        print(current_rot_as_dcm)
-        setpointMsg.pose.position.x=setpointMsg.pose.position.x+distanceToAdjust[0,0]
-        setpointMsg.pose.position.y=setpointMsg.pose.position.y+distanceToAdjust[0,1]
-        setpointMsg.pose.position.z=setpointMsg.pose.position.z+distanceToAdjust[0,2]
+        #print(distanceToAdjust)
+        #print(current_rot_as_dcm)
+        setpointMsg.pose.position.x=self.current_pose.pose.position.x+distanceToAdjust[0,0]
+        setpointMsg.pose.position.y=self.current_pose.pose.position.y+distanceToAdjust[0,1]
+        setpointMsg.pose.position.z=1#setpointMsg.pose.position.z+distanceToAdjust[0,2]
 
         current_rot_quat=current_rot.as_quat()
         setpointMsg.pose.orientation.x=current_rot_quat[0]
@@ -105,24 +108,31 @@ class stateMachine():
         setpointMsg.pose.orientation.z=current_rot_quat[2]
         setpointMsg.pose.orientation.w=current_rot_quat[3]
 
-        
-        
+        print(distanceToAdjust)
 
-        self._setpoint_local_pub.publish(setpointMsg)
-
-			
+        self.mav.set_target_pose(setpointMsg)
+        #self._setpoint_local_pub.publish(setpointMsg)
 
     def loop(self):
         while self.isEndOfendFenceReached() is not True:
-            if self.UAV_state.mode != "OFFBOARD":
-                self.set_mode(0, 'OFFBOARD')
-                print("enabling offboard mode")
-                self.last_request = rospy.Time.now()
-            if not self.UAV_state.armed:
-                if self.set_arming(True):
-                    print("Vehicle armed")
-                self.last_request = rospy.Time.now()
-            rospy.sleep(1)
+            #if self.UAV_state.mode != "OFFBOARD":
+            #    self.set_mode(0, 'OFFBOARD')
+            #    print("enabling offboard mode")
+            #    self.last_request = rospy.Time.now()
+            #if not self.UAV_state.armed:
+            #    if self.set_arming(True):
+            #        print("Vehicle armed")
+            #    self.last_request = rospy.Time.now()
+                if self.mav.UAV_state.mode != "OFFBOARD":
+                    self.mav.set_mode(0, 'OFFBOARD')
+                    rospy.loginfo("enabling offboard mode")
+                if not self.mav.UAV_state.armed:
+                    if self.mav.set_arming(True):
+                        rospy.loginfo("Vehicle armed")
+                else:
+                    self._adjust_drone_pos()
+
+                rospy.sleep(0.01)
             
         
     def _state_callback(self, topic):
