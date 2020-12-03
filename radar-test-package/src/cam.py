@@ -21,6 +21,7 @@ class LidarProcessor():
 
         # self._depth_image_sub = rospy.Subscriber(depth_image_topic, Image, self.on_depth_image)
         self._cloud_sub = rospy.Subscriber(cloud_topic, PointCloud2, self.on_cloud)
+        self.cloudcounter = 0
         self._fence_sub = rospy.Subscriber(pose_est_topic, Vector3, self.on_pose_est)
 
 
@@ -42,8 +43,13 @@ class LidarProcessor():
         return img[w/3:2*w/3,h/3:2*h/3]
 
     def on_cloud(self, msg = PointCloud2()):
-        rospy.logout('asd')
-        rospy.logout(msg.header)
+        self.cloudcounter = self.cloudcounter + 1
+        if self.cloudcounter % 1000 == 0:
+            self.cloudcounter = 0
+            rospy.logout('received 1000 clouds')
+
+        # rospy.logout('asd')
+        # rospy.logout(msg.header)
 
     def on_pose_est(self, msg):
         rospy.logout('got pose est')
