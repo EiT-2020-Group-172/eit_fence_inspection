@@ -82,6 +82,7 @@ class stateMachine():
             pass
         else:
             self.current_fence_pose = data
+            
 
     def _adjust_drone_pos(self):
         #setpointMsg=PoseStamped()
