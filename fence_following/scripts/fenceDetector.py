@@ -11,6 +11,7 @@ from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
 from threading import Lock
 import argparse
+import sys
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -76,11 +77,15 @@ class FenceDetector:
                 self.on_new_msg
         )
 
+        self.pcl = None
+
     def on_new_msg(
             self,
             msg
     ):
         pcl = pointcloud2_to_xyz_array(msg)
+
+        self.pcl = pcl
 
         pcl = self.remove_close_points(pcl)
 
@@ -108,6 +113,8 @@ class FenceDetector:
             self.height_lock.release()
 
     def start(self):
+        self.plot_count = 0
+
         while(True):
             self.rate.sleep()
 
@@ -133,6 +140,16 @@ class FenceDetector:
             msg.z = height
 
             self.pub.publish(msg)
+
+            if self.pcl is not None:
+                self.visualize_detection(
+                        self.pcl,
+                        dist,
+                        ang,
+                        filename="/home/ffn/plots/" + str(self.plot_count) + ".png"
+                )
+                plt.clf()
+                self.plot_count += 1
 
             if (rospy.is_shutdown()):
                 break

@@ -1,0 +1,9 @@
+<launch>
+	<!-- vim: set ft=xml noet : -->
+	<!-- base node launch file-->
+    <arg name="rosbag" default="/home/ffn/Nextcloud/Workspace/catkin_ws/src/eit_fence_inspection/rosbags/mmWave_fence_middle.bag" />
+
+    <node pkg="fence_following" type="pointCloudSampler.py" name="pointCloudSampler"/>
+    <node pkg="fence_following" type="fenceDetector.py" name="fenceDetector"/>
+    <node pkg="rosbag" type="play" name="player" args="--clock $(arg rosbag)"/>
+</launch>
