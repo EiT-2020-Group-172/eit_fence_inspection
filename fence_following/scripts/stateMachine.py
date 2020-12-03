@@ -30,8 +30,9 @@ class stateMachine():
         print("Init")
         rospy.init_node('stateMachine', anonymous=True)
         self.desiredDistance=0  
-        self.closerInspection=False
-        self.endOfFenceReached=False
+        self.closerInspection = False
+        self.endOfFenceReached = False
+        self.breachDetected = False
         self.current_pose = PoseStamped()
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
@@ -42,6 +43,7 @@ class stateMachine():
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
         self._fenceDistance_sub = rospy.Subscriber('/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
+        self._breach_sub = rospy.Subscriber('/breachDetected', bool, self._breach_detected_callback)
 
         # setup publisher
         self._setpoint_local_pub = rospy.Publisher('/mavros/setpoint_position/local',PoseStamped, queue_size=10)
@@ -66,6 +68,9 @@ class stateMachine():
 
     def _local_position_callback(self, topic):
         self.current_pose = topic
+
+    def _breach_detected_callback(self, topic):
+        self.breachDetected = topic
         
 
     def _fenceDistanceCallback(self, data):
@@ -109,8 +114,11 @@ class stateMachine():
         setpointMsg.pose.orientation.w=current_rot_quat[3]
 
         print(distanceToAdjust)
+        if self.breachDetected:
+            self.mav.set_target_pose(self.current_pose)
+        else:
+            self.mav.set_target_pose(setpointMsg)
 
-        self.mav.set_target_pose(setpointMsg)
         #self._setpoint_local_pub.publish(setpointMsg)
 
     def loop(self):
