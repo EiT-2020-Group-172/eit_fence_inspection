@@ -6,12 +6,13 @@ import rospy
 from cv_bridge import CvBridge
 
 from sensor_msgs.msg import LaserScan, Range, Image, PointCloud2
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Vector3
 from message_tools import create_setpoint_message_xyz_yaw
 
 depth_image_topic = '/camera/depth/image_raw'
 rgb_image_topic = '/camera/rgb/image_raw'
 cloud_topic = '/camera/depth/points'
+pose_est_topic = '/fence_detector/fence_est'
 
 
 class LidarProcessor():
@@ -20,6 +21,8 @@ class LidarProcessor():
 
         # self._depth_image_sub = rospy.Subscriber(depth_image_topic, Image, self.on_depth_image)
         self._cloud_sub = rospy.Subscriber(cloud_topic, PointCloud2, self.on_cloud)
+        self.cloudcounter = 0
+        self._fence_sub = rospy.Subscriber(pose_est_topic, Vector3, self.on_pose_est)
 
 
         # self._displacement_pub = rospy.Publisher(topic_displacement, PoseStamped, queue_size=10)
@@ -40,8 +43,16 @@ class LidarProcessor():
         return img[w/3:2*w/3,h/3:2*h/3]
 
     def on_cloud(self, msg = PointCloud2()):
-        rospy.logout('asd')
-        rospy.logout(msg.header)
+        self.cloudcounter = self.cloudcounter + 1
+        if self.cloudcounter % 1000 == 0:
+            self.cloudcounter = 0
+            rospy.logout('received 1000 clouds')
+
+        # rospy.logout('asd')
+        # rospy.logout(msg.header)
+
+    def on_pose_est(self, msg):
+        rospy.logout('got pose est')
 
 
 if __name__ == "__main__":
