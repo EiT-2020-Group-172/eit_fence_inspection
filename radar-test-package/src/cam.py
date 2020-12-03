@@ -20,6 +20,7 @@ class LidarProcessor():
 
         # self._depth_image_sub = rospy.Subscriber(depth_image_topic, Image, self.on_depth_image)
         self._cloud_sub = rospy.Subscriber(cloud_topic, PointCloud2, self.on_cloud)
+        self.cloudcounter = 0
 
 
         # self._displacement_pub = rospy.Publisher(topic_displacement, PoseStamped, queue_size=10)
@@ -40,8 +41,13 @@ class LidarProcessor():
         return img[w/3:2*w/3,h/3:2*h/3]
 
     def on_cloud(self, msg = PointCloud2()):
-        rospy.logout('asd')
-        rospy.logout(msg.header)
+        self.cloudcounter = self.cloudcounter + 1
+        if self.cloudcounter % 1000 == 0:
+            self.cloudcounter = 0
+            rospy.logout('received 1000 clouds')
+
+        # rospy.logout('asd')
+        # rospy.logout(msg.header)
 
 
 if __name__ == "__main__":
