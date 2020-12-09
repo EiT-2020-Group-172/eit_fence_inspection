@@ -7,7 +7,7 @@ from cv_bridge import CvBridge
 
 from sensor_msgs.msg import LaserScan, Range, Image, PointCloud2
 from geometry_msgs.msg import PoseStamped, Vector3
-from message_tools import create_setpoint_message_xyz_yaw
+from radar_test_package.message_tools import create_setpoint_message_xyz_yaw
 from ros_numpy.point_cloud2 import pointcloud2_to_array, array_to_pointcloud2
 
 depth_image_topic = '/camera/depth/image_raw'
