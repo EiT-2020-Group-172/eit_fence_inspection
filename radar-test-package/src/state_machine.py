@@ -73,6 +73,7 @@ class StateMachine():
 
         elif cur == self.States.TAKE_OFF:
             yaw = -1.57079633
+            # yaw = -2.0
             self.mav1.set_target_pose(create_setpoint_message_xyz_yaw(0, 0, 1, yaw))
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.BEAM)
@@ -86,7 +87,7 @@ class StateMachine():
 
 
         elif cur == self.States.BACK:
-            target = Point(-4.6, 1, 1.0)
+            target = Point(-4.6, 2, 1.0)
             self.mav1.set_target_pos(target)
             self.set_current_state(self.States.WAITING_TO_ARRIVE)
             self.set_next_state(self.States.BEAM)
