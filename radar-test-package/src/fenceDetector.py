@@ -5,7 +5,7 @@ import rospy
 import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_xyz_array
 from sensor_msgs.msg import PointCloud2, PointCloud
-from geometry_msgs.msg import Vector3, Point32, PoseStamped
+from geometry_msgs.msg import Vector3, Point32, PoseStamped, Point, Quaternion
 from math import atan, cos, sin
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
@@ -15,7 +15,7 @@ import sys
 import os
 from random import randint
 
-from radar_test_package.message_tools import create_setpoint_message_xyz_yaw
+from radar_test_package.message_tools import quaternion_from_euler, create_setpoint_message_xyz_yaw 
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -117,7 +117,10 @@ class FenceDetector:
 
         self.pcl = pcl
 
-        #pcl = self.remove_close_points(pcl)
+        try:
+            pcl = self.remove_close_points(pcl)
+        except(IndexError):
+            return
 
         self.pcl_filtered = pcl
 
@@ -127,8 +130,8 @@ class FenceDetector:
 
         for point in self.fence_pcl:
             p = Point32()
-            p.x = point[1]
-            p.y = point[2]
+            p.x = -point[2]
+            p.y = point[1]
             p.z = point[0]
 
             points.append(p)
@@ -189,7 +192,7 @@ class FenceDetector:
                 #del point
                 continue
 
-            points_arr.append([z, x, y])
+            points_arr.append([z, y, -x])
 
             #point[0] = z
             #point[1] = x
@@ -244,7 +247,15 @@ class FenceDetector:
             self.pub.publish(msg)
 
         
-            pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=ang)
+            pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=0)
+            point = Point()
+            point.z = dist
+            point.x = 0
+            point.y = 0
+            quat = quaternion_from_euler(0, ang, 0)
+            q = Quaternion(quat[0], quat[1], quat[2], quat[3])
+            pose.pose.orientation = q
+            pose.pose.position = point
 
             pose.header.frame_id = "camera_link"
 
@@ -287,11 +298,11 @@ class FenceDetector:
                 (point_cloud[:,0] >= mean_x - stdev_x) & 
                 (point_cloud[:,0] <= mean_x + stdev_x)]
 
-        mean_x = np.mean(fence_pcl[:,0])
-        stdev_x = np.std(fence_pcl[:,0])
-        fence_pcl = fence_pcl[
-                (fence_pcl[:,0] >= mean_x - stdev_x) & 
-                (fence_pcl[:,0] <= mean_x + stdev_x)]
+        #mean_x = np.mean(fence_pcl[:,0])
+        #stdev_x = np.std(fence_pcl[:,0])
+        #fence_pcl = fence_pcl[
+        #        (fence_pcl[:,0] >= mean_x - stdev_x) & 
+        #        (fence_pcl[:,0] <= mean_x + stdev_x)]
 
         ground_pcl = point_cloud[
                 (point_cloud[:,0] < mean_x - stdev_x) & 
