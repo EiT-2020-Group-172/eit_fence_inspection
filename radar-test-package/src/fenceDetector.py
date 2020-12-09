@@ -113,11 +113,11 @@ class FenceDetector:
     ):
         pcl = pointcloud2_to_xyz_array(msg)
 
-        self.transform_pcl_coordsys(pcl)
+        pcl = self.transform_pcl_coordsys(pcl)
 
         self.pcl = pcl
 
-        pcl = self.remove_close_points(pcl)
+        #pcl = self.remove_close_points(pcl)
 
         self.pcl_filtered = pcl
 
@@ -180,17 +180,20 @@ class FenceDetector:
             else:
                 return False
 
+        points_arr = []
         points_msg = []
         for point in points:
             x, y, z = (point[0], point[1], point[2])
 
             if rm_pnt(z):
-                del point
+                #del point
                 continue
 
-            point[0] = z
-            point[1] = x
-            point[2] = y
+            points_arr.append([z, x, y])
+
+            #point[0] = z
+            #point[1] = x
+            #point[2] = y
 
             p = Point32()
             p.x = x #point[0]
@@ -204,6 +207,8 @@ class FenceDetector:
         msg.header.frame_id = "camera_link"
 
         self.modified_pcl_pub.publish(msg)
+
+        return np.array(points_arr)
 
     def start(self):
         self.plot_count = 0
