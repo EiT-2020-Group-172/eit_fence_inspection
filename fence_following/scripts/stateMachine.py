@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 # license removed for brevity
+# Notes: The following is true if distanceinverted is not true
+# Distance too large means move to the right
+# If distance too small, move left
+# positve rotation is counter clockwise
+
+
 import rospy
 import mavros.setpoint
 from geometry_msgs.msg import PoseStamped, Pose, Vector3
@@ -27,9 +33,9 @@ def angleToRotation(angle):
 
 class stateMachine():
     def __init__(self):
-        print("Init")
+        #print("Init")
         rospy.init_node('stateMachine', anonymous=True)
-        self.desiredDistance=0  
+        #self.desiredDistance=0  
         self.closerInspection = False
         self.endOfFenceReached = False
         self.breachDetected = False
@@ -37,13 +43,39 @@ class stateMachine():
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
+        
+        # load parameters:
 
+        if rospy.has_param('/desiredDistance'):
+            self.desiredDistance = rospy.get_param('/desiredDistance')
+            
+        else:
+            print("desired distance parameter not found")
+            self.desiredDistance = 0
+
+        if rospy.has_param('/forwardSpeed'):
+            self.forwardSpeed = rospy.get_param('/forwardSpeed')
+        else:
+            print("forward speed parameter not found")
+            self.forwardSpeed = 0.5
+
+        if rospy.has_param('/distanceInverted'):
+            self.distanceInverted = rospy.get_param('/distanceInverted')
+        else:
+            print("distance Inverted  parameter not found")
+            self.distanceInverted = False
+
+        if rospy.has_param('/rotationInverted'):
+            self.rotationInverted = rospy.get_param('/rotationInverted')
+        else:
+            print("rotation Inverted  parameter not found")
+            self.rotationInverted = False
         # setup subscriber
 
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
         self._fenceDistance_sub = rospy.Subscriber('/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
-        self._breach_sub = rospy.Subscriber('/breachDetected', bool, self._breach_detected_callback)
+        #self._breach_sub = rospy.Subscriber('/breachDetected', bool, self._breach_detected_callback)
 
         # setup publisher
         self._setpoint_local_pub = rospy.Publisher('/mavros/setpoint_position/local',PoseStamped, queue_size=10)
@@ -93,12 +125,18 @@ class stateMachine():
         )
         distanceError=self.desiredDistance - self.current_fence_pose.x
         current_rot=quatToRotation(self.current_pose.pose.orientation)
-        current_rot=current_rot*angleToRotation(self.current_fence_pose.y)  # as dcm?
+        if self.rotationInverted:
+            current_rot=current_rot*angleToRotation(-self.current_fence_pose.y)  # as dcm?
+        else:
+            current_rot=current_rot*angleToRotation(self.current_fence_pose.y)  # as dcm?
         current_rot_as_dcm=current_rot.as_dcm()
         
         #distanceToAdjust=current_rot_as_dcm*current_rot_as_dcm
-        arr1 = np.array([[0.5, 0, 0]])
-        arr2 = np.array([[0, distanceError, 0]])
+        arr1 = np.array([[self.forwardSpeed, 0, 0]])
+        if self.distanceInverted:
+            arr2 = np.array([[0, -distanceError, 0]])
+        else:
+            arr2 = np.array([[0, distanceError, 0]])
         distanceToAdjust=arr2.dot(current_rot_as_dcm)+arr1.dot(current_rot_as_dcm)
         #distanceToAdjust=current_rot_as_dcm*[0,distanceError,0]#+current_rot_as_dcm*[0.5,0,0]
         #distanceToAdjust=current_rot*[0,distanceError,0]+current_rot*[0.5,0,0]
@@ -114,7 +152,7 @@ class stateMachine():
         setpointMsg.pose.orientation.z=current_rot_quat[2]
         setpointMsg.pose.orientation.w=current_rot_quat[3]
 
-        print(distanceToAdjust)
+        #print(distanceToAdjust)
         if self.breachDetected:
             self.mav.set_target_pose(self.current_pose)
         else:
@@ -134,10 +172,11 @@ class stateMachine():
             #    self.last_request = rospy.Time.now()
                 if self.mav.UAV_state.mode != "OFFBOARD":
                     self.mav.set_mode(0, 'OFFBOARD')
-                    rospy.loginfo("enabling offboard mode")
+                    #rospy.loginfo("enabling offboard mode")
                 if not self.mav.UAV_state.armed:
                     if self.mav.set_arming(True):
-                        rospy.loginfo("Vehicle armed")
+                        pass
+                     #   rospy.loginfo("Vehicle armed")
                 else:
                     self._adjust_drone_pos()
 
@@ -165,7 +204,7 @@ if __name__ == '__main__':
         rospy.wait_for_service('mavros/set_mode')
         while (not sm.UAV_state.connected):
             rospy.sleep(0.1)
-        print("connected")
+        #print("connected")
         #sm._adjust_drone_pos()
         sm.loop()
         rospy.spin()
