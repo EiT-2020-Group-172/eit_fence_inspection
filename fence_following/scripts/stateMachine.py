@@ -9,7 +9,7 @@
 import rospy
 import mavros.setpoint
 from geometry_msgs.msg import PoseStamped, Pose, Vector3
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from scipy.spatial.transform import Rotation as R
 import numpy as np
@@ -75,7 +75,7 @@ class stateMachine():
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
         self._fenceDistance_sub = rospy.Subscriber('/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
-        #self._breach_sub = rospy.Subscriber('/breachDetected', bool, self._breach_detected_callback)
+        self._breach_sub = rospy.Subscriber('/breachDetected', Bool, self._breach_detected_callback)
 
         # setup publisher
         self._setpoint_local_pub = rospy.Publisher('/mavros/setpoint_position/local',PoseStamped, queue_size=10)
@@ -101,8 +101,11 @@ class stateMachine():
     def _local_position_callback(self, topic):
         self.current_pose = topic
 
-    def _breach_detected_callback(self, topic):
-        self.breachDetected = topic
+    def _breach_detected_callback(self, msg = Bool()):
+        if self.breachDetected == False and  msg.data:
+            self.breachPose = self.current_pose
+        self.breachDetected = msg.data
+        
         
 
     def _fenceDistanceCallback(self, data):
@@ -154,9 +157,10 @@ class stateMachine():
 
         #print(distanceToAdjust)
         if self.breachDetected:
-            self.mav.set_target_pose(self.current_pose)
-        else:
-            self.mav.set_target_pose(setpointMsg)
+            setpointMsg=self.breachPose
+            #self.mav.set_target_pose(self.current_pose)
+        #else:
+        self.mav.set_target_pose(setpointMsg)
 
         #self._setpoint_local_pub.publish(setpointMsg)
 
