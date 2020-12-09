@@ -16,7 +16,8 @@ import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-MIN_DIST_X = 1
+MIN_DIST_X = 0.5
+MAX_DIST_x = 5
 
 class FenceDetector:
     def __init__(
@@ -141,15 +142,15 @@ class FenceDetector:
 
             self.pub.publish(msg)
 
-            if self.pcl is not None:
-                self.visualize_detection(
-                        self.pcl,
-                        dist,
-                        ang,
-                        filename="/home/ffn/plots/" + str(self.plot_count) + ".png"
-                )
-                plt.clf()
-                self.plot_count += 1
+            #if self.pcl is not None:
+            #    self.visualize_detection(
+            #            self.pcl,
+            #            dist,
+            #            ang,
+            #            filename="/home/ffn/plots/" + str(self.plot_count) + ".png"
+            #    )
+            #    plt.clf()
+            #    self.plot_count += 1
 
             if (rospy.is_shutdown()):
                 break
@@ -158,7 +159,7 @@ class FenceDetector:
             self,
             point_cloud
     ):
-        return point_cloud[(point_cloud[:,0] >= MIN_DIST_X)]
+        return point_cloud[(point_cloud[:,0] >= MIN_DIST_X) & (point_cloud[:,0] <= MAX_DIST_x)]
 
     def segment_fence_pcl(
             self,
