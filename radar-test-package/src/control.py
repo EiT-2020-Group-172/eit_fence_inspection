@@ -18,9 +18,9 @@ from std_msgs.msg import String
 from geometry_msgs.msg import TwistStamped, PoseStamped, PoseWithCovarianceStamped, Vector3, Vector3Stamped, Point, Quaternion, Pose
 
 # import files in package
-from mav import Mav
+from radar_test_package.mav import Mav
 from state_machine import StateMachine
-import message_tools as msgt
+import radar_test_package.message_tools as msgt
 
 class MainNode():
     def __init__(self):
