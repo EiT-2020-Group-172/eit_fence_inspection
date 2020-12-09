@@ -43,6 +43,7 @@ class stateMachine():
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
+        self.state = "off"
         
         # load parameters:
 
@@ -73,7 +74,7 @@ class stateMachine():
         # setup subscriber
 
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
-        self._fenceDistance_sub = rospy.Subscriber('/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
+        self._fenceDistance_sub = rospy.Subscriber('/fence_detector/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
         self._breach_sub = rospy.Subscriber('/breachDetected', Bool, self._breach_detected_callback)
 
@@ -127,6 +128,12 @@ class stateMachine():
             stamp=rospy.Time.now()),
         )
         distanceError=self.desiredDistance - self.current_fence_pose.x
+
+        if (self.current_fence_pose.y > 0.75):
+            self.current_fence_pose.y = 0.75
+        elif (self.current_fence_pose.y < -0.75):
+            self.current_fence_pose.y = -0.75
+
         current_rot=quatToRotation(self.current_pose.pose.orientation)
         if self.rotationInverted:
             current_rot=current_rot*angleToRotation(-self.current_fence_pose.y)  # as dcm?
@@ -135,11 +142,12 @@ class stateMachine():
         current_rot_as_dcm=current_rot.as_dcm()
         
         #distanceToAdjust=current_rot_as_dcm*current_rot_as_dcm
-        arr1 = np.array([[self.forwardSpeed, 0, 0]])
+        arr1 = np.array([[0, self.forwardSpeed, 0]])
+
         if self.distanceInverted:
-            arr2 = np.array([[0, -distanceError, 0]])
+            arr2 = np.array([[-distanceError, 0, 0]])
         else:
-            arr2 = np.array([[0, distanceError, 0]])
+            arr2 = np.array([[distanceError, 0, 0]])
         distanceToAdjust=arr2.dot(current_rot_as_dcm)+arr1.dot(current_rot_as_dcm)
         #distanceToAdjust=current_rot_as_dcm*[0,distanceError,0]#+current_rot_as_dcm*[0.5,0,0]
         #distanceToAdjust=current_rot*[0,distanceError,0]+current_rot*[0.5,0,0]
@@ -163,6 +171,9 @@ class stateMachine():
         self.mav.set_target_pose(setpointMsg)
 
         #self._setpoint_local_pub.publish(setpointMsg)
+    def takeoff(self):
+        self.mav.set_target_pose(msgt.create_setpoint_message_xyz_yaw(0, 3, 1, yaw=-2))
+
 
     def loop(self):
         while self.isEndOfendFenceReached() is not True:
@@ -181,7 +192,19 @@ class stateMachine():
                     if self.mav.set_arming(True):
                         pass
                      #   rospy.loginfo("Vehicle armed")
-                else:
+                elif self.state == "off":
+                    self.takeoff()
+                    self.state = "waiting_to_arrive"
+                
+                elif self.state == "waiting_to_arrive":
+                    if self.mav.has_arrived():
+                        self.state = "find_fence"
+
+                elif self.state == "find_fence":
+                    # to be implemented
+                    self.state = "fence_following"
+
+                elif self.state == "fence_following":
                     self._adjust_drone_pos()
 
                 rospy.sleep(0.01)

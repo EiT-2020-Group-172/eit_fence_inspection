@@ -1,24 +1,16 @@
 #!/usr/bin/python
 
-import rosbag
 import rospy
 import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_xyz_array
 from sensor_msgs.msg import PointCloud2, PointCloud
 from geometry_msgs.msg import Vector3, Point32, PoseStamped, Point, Quaternion
 from math import atan, cos, sin
-from filterpy.kalman import KalmanFilter
-from filterpy.common import Q_discrete_white_noise
-from threading import Lock
 import argparse
 import sys
-import os
 from random import randint
 
 from radar_test_package.message_tools import quaternion_from_euler, create_setpoint_message_xyz_yaw 
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 MIN_DIST_X = 1.1
 MAX_DIST_X = 5
@@ -31,42 +23,15 @@ class FenceDetector:
             out_topic="/fence_est",
             kf_sample_time_ms=100,
             init_dist=2,
-            init_height=1,
             init_ang=0
     ):
         self.node_name = node_name
         self.in_topic = in_topic
         self.out_topic = out_topic
 
-        #self.kf_dist = KalmanFilter(dim_x=2, dim_z=1)
-        #self.kf_dist.x = np.array([[float(init_dist)],[0.]])
-        #self.kf_dist.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
-        #self.kf_dist.H = np.array([[1., 0.]])
-        #self.kf_dist.P *= 1000
-        #self.kf_dist.R = 5.
-        #self.kf_dist.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        #self.dist_lock = Lock()
         self.dist = init_dist
 
-        #self.kf_ang = KalmanFilter(dim_x=2, dim_z=1)
-        #self.kf_ang.x = np.array([[float(init_ang)],[0.]])
-        #self.kf_ang.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
-        #self.kf_ang.H = np.array([[1., 0.]])
-        #self.kf_ang.P *= 1000
-        #self.kf_ang.R = 5.
-        #self.kf_ang.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        #self.ang_lock = Lock()
         self.ang = init_ang
-
-        #self.kf_height = KalmanFilter(dim_x=2, dim_z=1)
-        #self.kf_height.x = np.array([[float(init_height)],[0.]])
-        #self.kf_height.F = np.array([[1., 0.],[0., 0.]])
-        #self.kf_height.H = np.array([[1., 0.]])
-        #self.kf_height.P *= 1000
-        #self.kf_height.R = 5.
-        #self.kf_height.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        #self.height_lock = Lock()
-        self.height = init_height
 
         rospy.init_node(self.node_name)
 
@@ -83,8 +48,6 @@ class FenceDetector:
                 PointCloud2,
                 self.on_new_msg
         )
-
-
 
         self.modified_pcl_pub = rospy.Publisher(
                 self.node_name + "/modified_pcl",
@@ -105,7 +68,6 @@ class FenceDetector:
         self.pcl = None
         self.pcl_filtered = None
         self.pcl_fence = None
-        self.pcl_ground = None
 
     def on_new_msg(
             self,
@@ -124,7 +86,7 @@ class FenceDetector:
 
         self.pcl_filtered = pcl
 
-        self.fence_pcl, self.ground_pcl = self.segment_fence_pcl(pcl)
+        self.fence_pcl = self.segment_fence_pcl(pcl)
 
         points = []
 
@@ -142,35 +104,37 @@ class FenceDetector:
 
         self.segmented_pcl_pub.publish(msg)
         
-        dist, ang, height = self.get_fence_pos(
-                self.fence_pcl,
-                self.ground_pcl
+        dist, ang = self.get_fence_pos(
+                self.fence_pcl
         )
-        rospy.loginfo(str(dist) + "\t" + str(ang))
 
         if (dist is not None):
             self.dist = dist
         if (ang is not None):
             self.ang = ang
-        if (height is not None):
-            self.height = height
 
-        #if dist is not None:
-        #    self.dist_lock.acquire(True)
-        #    self.kf_dist.update(np.array([dist]))
-        #    self.dist_lock.release()
+        if (dist is not None and ang is not None):
+            msg = Vector3()
+            msg.x = dist
+            msg.y = ang
+            msg.z = 0 
 
-        #if ang is not None:
-        #    self.ang_lock.acquire(True)
-        #    self.kf_ang.update(np.array([ang]))
-        #    self.ang_lock.release()
+            self.pub.publish(msg)
+        
+            pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=0)
+            point = Point()
+            point.z = dist
+            point.x = 0
+            point.y = 0
+            quat = quaternion_from_euler(0, ang, 0)
+            q = Quaternion(quat[0], quat[1], quat[2], quat[3])
+            pose.pose.orientation = q
+            pose.pose.position = point
 
-        #if height is not None:
-        #    self.height_lock.acquire(True)
-        #    self.kf_height.update(np.array([height]))
-        #    #self.height = height
-        #    self.height_lock.release()
-    
+            pose.header.frame_id = "camera_link"
+
+            self.fence_pose_pub.publish(pose)
+
     def transform_pcl_coordsys(self, points):
         def rm_pnt(dist):
             a = 0.3
@@ -194,16 +158,11 @@ class FenceDetector:
 
             points_arr.append([z, y, -x])
 
-            #point[0] = z
-            #point[1] = x
-            #point[2] = y
-
             p = Point32()
-            p.x = x #point[0]
-            p.y = y #point[1]
-            p.z = z #point[2]
+            p.x = x 
+            p.y = y 
+            p.z = z 
             points_msg.append(p)
-
 
         msg = PointCloud()
         msg.points = points_msg
@@ -218,65 +177,6 @@ class FenceDetector:
 
         while(True):
             self.rate.sleep()
-
-            #self.dist_lock.acquire(True)
-            #self.kf_dist.predict()
-            #dist = np.copy(self.kf_dist.x)[0]
-            #self.dist_lock.release()
-
-            #self.ang_lock.acquire(True)
-            #self.kf_ang.predict()
-            #ang = np.copy(self.kf_ang.x)[0]
-            #self.ang_lock.release()
-
-            #self.height_lock.acquire(True)
-            #self.kf_height.predict()
-            #height = np.copy(self.kf_height.x)[0]
-            ##height = self.height
-            #self.height_lock.release()
-
-            dist = self.dist
-            ang = self.ang
-            height = self.height
-            
-            msg = Vector3()
-            msg.x = dist
-            msg.y = ang
-            msg.z = height
-
-            self.pub.publish(msg)
-
-        
-            pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=0)
-            point = Point()
-            point.z = dist
-            point.x = 0
-            point.y = 0
-            quat = quaternion_from_euler(0, ang, 0)
-            q = Quaternion(quat[0], quat[1], quat[2], quat[3])
-            pose.pose.orientation = q
-            pose.pose.position = point
-
-            pose.header.frame_id = "camera_link"
-
-            self.fence_pose_pub.publish(pose)
-
-
-
-            #if self.pcl is not None:
-            #    self.visualize_detection(
-            #            self.pcl,
-            #            dist,
-            #            ang,
-            #            filename="/home/balint/" + str(self.plot_count) + ".png"
-            #    )
-            #    self.visualize_segmentation(
-            #            self.pcl_filtered,
-            #            self.pcl_fence,
-            #            self.pcl_ground,
-            #            filename="plots/" + str(self.plot_count) + ".png")
-            #    plt.clf()
-            #    self.plot_count += 1
 
             if (rospy.is_shutdown()):
                 break
@@ -298,18 +198,7 @@ class FenceDetector:
                 (point_cloud[:,0] >= mean_x - stdev_x) & 
                 (point_cloud[:,0] <= mean_x + stdev_x)]
 
-        #mean_x = np.mean(fence_pcl[:,0])
-        #stdev_x = np.std(fence_pcl[:,0])
-        #fence_pcl = fence_pcl[
-        #        (fence_pcl[:,0] >= mean_x - stdev_x) & 
-        #        (fence_pcl[:,0] <= mean_x + stdev_x)]
-
-        ground_pcl = point_cloud[
-                (point_cloud[:,0] < mean_x - stdev_x) & 
-                (point_cloud[:,1] < 0) &
-                (point_cloud[:,1] < np.amin(fence_pcl[:,1]))]
-
-        return fence_pcl, ground_pcl
+        return fence_pcl
 
     def fit_line(
             self,
@@ -338,12 +227,10 @@ class FenceDetector:
 
     def get_fence_pos(
             self,
-            fence_pcl, 
-            ground_pcl
+            fence_pcl
     ):
         dist = None
         ang = None
-        height = None
 
         if (fence_pcl.shape[0] == 1):
             dist = fence_pcl[0,0]
@@ -355,70 +242,67 @@ class FenceDetector:
             dist = b
             ang = atan(a)
 
-        if (ground_pcl.shape[0] > 0):
-            height = abs(np.amin(ground_pcl[:,1]))
+        return dist, ang
 
-        return dist, ang, height
+    #def visualize_segmentation(
+    #        self,
+    #        pcl, 
+    #        pcl_fence, 
+    #        pcl_ground,
+    #        show_plot=False,
+    #        filename=None
+    #):
+    #    plt.Figure()
 
-    def visualize_segmentation(
-            self,
-            pcl, 
-            pcl_fence, 
-            pcl_ground,
-            show_plot=False,
-            filename=None
-    ):
-        plt.Figure()
+    #    plt.scatter(pcl[:,0],pcl[:,2],color='green',label="Removed points")
+    #    if pcl_fence is not None:
+    #        plt.scatter(pcl_fence[:,0],pcl_fence[:,2],color='red',label="Fence points")
+    #    if pcl_ground is not None:
+    #        plt.scatter(pcl_ground[:,0],pcl_ground[:,2],color='black',label="Ground points")
 
-        plt.scatter(pcl[:,0],pcl[:,2],color='green',label="Removed points")
-        if pcl_fence is not None:
-            plt.scatter(pcl_fence[:,0],pcl_fence[:,2],color='red',label="Fence points")
-        if pcl_ground is not None:
-            plt.scatter(pcl_ground[:,0],pcl_ground[:,2],color='black',label="Ground points")
+    #    plt.title("Segmented point cloud")
+    #    plt.legend()
+    #    plt.xlabel("Depth")
+    #    plt.ylabel("Height")
 
-        plt.title("Segmented point cloud")
-        plt.legend()
-        plt.xlabel("Depth")
-        plt.ylabel("Height")
+    #    if filename is not None:
+    #        plt.savefig(filename)
 
-        if filename is not None:
-            plt.savefig(filename)
+    #    if show_plot:
+    #        plt.show()
 
-        if show_plot:
-            plt.show()
+    #def visualize_detection(
+    #        self,
+    #        pcl, 
+    #        dist,
+    #        ang,
+    #        show_plot=False,
+    #        filename=None
+    #):
+    #    fig = plt.Figure()
 
-    def visualize_detection(
-            self,
-            pcl, 
-            dist,
-            ang,
-            show_plot=False,
-            filename=None
-    ):
-        fig = plt.Figure()
+    #    plt.scatter(pcl[:,2],pcl[:,0],color='blue', label="Point cloud")
+    #    dist_points = None
+    #    ang_points = None
 
-        plt.scatter(pcl[:,2],pcl[:,0],color='blue', label="Point cloud")
-        dist_points = None
-        ang_points = None
+    #    if dist is not None:
+    #        dist_points = [[0,0,0],[dist,0,0]] 
+    #        plt.plot([dist_points[0][2],dist_points[1][2]],[dist_points[0][0],dist_points[1][0]],color="red",linestyle="--",label="Detected distance to fence")
 
-        if dist is not None:
-            dist_points = [[0,0,0],[dist,0,0]] 
-            plt.plot([dist_points[0][2],dist_points[1][2]],[dist_points[0][0],dist_points[1][0]],color="red",linestyle="--",label="Detected distance to fence")
+    #        if ang is not None:
+    #            ang_points = [[dist - sin(ang), 0, -cos(ang)], [dist + sin(ang), 0, cos(ang)]]
+    #            plt.plot([ang_points[0][2],ang_points[1][2]],[ang_points[0][0],ang_points[1][0]],color="red",linestyle="-",label="Detected fence angle")
 
-            if ang is not None:
-                ang_points = [[dist - sin(ang), 0, -cos(ang)], [dist + sin(ang), 0, cos(ang)]]
-                plt.plot([ang_points[0][2],ang_points[1][2]],[ang_points[0][0],ang_points[1][0]],color="red",linestyle="-",label="Detected fence angle")
+    #    plt.legend()
+    #    plt.title("Detected fence, top view")
+    #    plt.xlabel("Width")
+    #    plt.ylabel("Depth")
 
-        plt.legend()
-        plt.title("Detected fence, top view")
-        plt.xlabel("Width")
-        plt.ylabel("Depth")
+    #    if filename is not None:
+    #        plt.savefig(filename)
 
-        if filename is not None:
-            plt.savefig(filename)
-
-        if show_plot:
-            plt.show()
+    #    if show_plot:
+    #        plt.show()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Detects the height of the drone and the distance and angle to a fence from mmWave point clouds.")
@@ -483,16 +367,6 @@ def parse_args():
             help="The initial estimated angle of the fence in radians"
     )
 
-    parser.add_argument(
-            "--init-height",
-            metavar="HEIGHT",
-            type=int,
-            dest="height",
-            action="store",
-            default=1,
-            help="The initial estimated height of the drone from the bottom of the fence in meters"
-    )
-
     sys.argv = rospy.myargv(argv=sys.argv)
 
     args = parser.parse_args()
@@ -508,8 +382,7 @@ if __name__ == "__main__":
             out_topic=args.o,
             kf_sample_time_ms=args.dt,
             init_dist=args.dist,
-            init_ang=args.ang,
-            init_height=args.height
+            init_ang=args.ang
     )
 
     fd.start()

@@ -1,9 +1,12 @@
+<?xml version="1.0"?>
 <launch>
 	<!-- vim: set ft=xml noet : -->
 	<!-- base node launch file-->
-    <arg name="rosbag" default="/home/ffn/Nextcloud/Workspace/catkin_ws/src/eit_fence_inspection/rosbags/mmWave_fence_middle.bag" />
+
+    <include file="$(find fence_following)/launch/world_and_state.launch" />
 
     <node pkg="fence_following" type="pointCloudSampler.py" name="pointCloudSampler"/>
     <node pkg="fence_following" type="fenceDetector.py" name="fenceDetector"/>
-    <node pkg="rosbag" type="play" name="player" args="--clock $(arg rosbag)"/>
+
+    <!--<node pkg="rviz" name="rviz" type="rviz" args="-d $(find radar-test-package)/launch/rviz/fenceDetection.rviz"/>-->
 </launch>
