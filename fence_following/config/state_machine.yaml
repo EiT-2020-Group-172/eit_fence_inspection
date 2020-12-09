@@ -1,4 +1,4 @@
-desiredDistance: 0
-distanceInverted: True
+desiredDistance: 2
+distanceInverted: False
 rotationInverted: True
 forwardSpeed: 0.5
