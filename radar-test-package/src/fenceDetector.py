@@ -4,14 +4,18 @@ import rosbag
 import rospy
 import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_xyz_array
-from sensor_msgs.msg import PointCloud2
-from geometry_msgs.msg import Vector3
+from sensor_msgs.msg import PointCloud2, PointCloud
+from geometry_msgs.msg import Vector3, Point32, PoseStamped
 from math import atan, cos, sin
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
 from threading import Lock
 import argparse
 import sys
+import os
+from random import randint
+
+from radar_test_package.message_tools import create_setpoint_message_xyz_yaw
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -34,33 +38,35 @@ class FenceDetector:
         self.in_topic = in_topic
         self.out_topic = out_topic
 
-        self.kf_dist = KalmanFilter(dim_x=2, dim_z=1)
-        self.kf_dist.x = np.array([[float(init_dist)],[0.]])
-        self.kf_dist.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
-        self.kf_dist.H = np.array([[1., 0.]])
-        self.kf_dist.P *= 1000
-        self.kf_dist.R = 5.
-        self.kf_dist.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        self.dist_lock = Lock()
+        #self.kf_dist = KalmanFilter(dim_x=2, dim_z=1)
+        #self.kf_dist.x = np.array([[float(init_dist)],[0.]])
+        #self.kf_dist.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
+        #self.kf_dist.H = np.array([[1., 0.]])
+        #self.kf_dist.P *= 1000
+        #self.kf_dist.R = 5.
+        #self.kf_dist.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
+        #self.dist_lock = Lock()
+        self.dist = init_dist
 
-        self.kf_ang = KalmanFilter(dim_x=2, dim_z=1)
-        self.kf_ang.x = np.array([[float(init_ang)],[0.]])
-        self.kf_ang.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
-        self.kf_ang.H = np.array([[1., 0.]])
-        self.kf_ang.P *= 1000
-        self.kf_ang.R = 5.
-        self.kf_ang.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        self.ang_lock = Lock()
+        #self.kf_ang = KalmanFilter(dim_x=2, dim_z=1)
+        #self.kf_ang.x = np.array([[float(init_ang)],[0.]])
+        #self.kf_ang.F = np.array([[1., float(kf_sample_time_ms)],[0., 1.]])
+        #self.kf_ang.H = np.array([[1., 0.]])
+        #self.kf_ang.P *= 1000
+        #self.kf_ang.R = 5.
+        #self.kf_ang.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
+        #self.ang_lock = Lock()
+        self.ang = init_ang
 
-        self.kf_height = KalmanFilter(dim_x=2, dim_z=1)
-        self.kf_height.x = np.array([[float(init_height)],[0.]])
-        self.kf_height.F = np.array([[1., 0.],[0., 0.]])
-        self.kf_height.H = np.array([[1., 0.]])
-        self.kf_height.P *= 1000
-        self.kf_height.R = 5.
-        self.kf_height.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
-        #self.height = init_height
-        self.height_lock = Lock()
+        #self.kf_height = KalmanFilter(dim_x=2, dim_z=1)
+        #self.kf_height.x = np.array([[float(init_height)],[0.]])
+        #self.kf_height.F = np.array([[1., 0.],[0., 0.]])
+        #self.kf_height.H = np.array([[1., 0.]])
+        #self.kf_height.P *= 1000
+        #self.kf_height.R = 5.
+        #self.kf_height.Q = Q_discrete_white_noise(dim=2, dt=kf_sample_time_ms, var=0.13)
+        #self.height_lock = Lock()
+        self.height = init_height
 
         rospy.init_node(self.node_name)
 
@@ -78,6 +84,24 @@ class FenceDetector:
                 self.on_new_msg
         )
 
+
+
+        self.modified_pcl_pub = rospy.Publisher(
+                self.node_name + "/modified_pcl",
+                PointCloud,
+                queue_size=1)
+
+
+        self.fence_pose_pub = rospy.Publisher(
+                self.node_name + "/fence_pose",
+                PoseStamped,
+                queue_size=1)
+
+        self.segmented_pcl_pub = rospy.Publisher(
+                self.node_name + "/segmented_pcl",
+                PointCloud,
+                queue_size=1)
+
         self.pcl = None
         self.pcl_filtered = None
         self.pcl_fence = None
@@ -88,7 +112,6 @@ class FenceDetector:
             msg
     ):
         pcl = pointcloud2_to_xyz_array(msg)
-        rospy.loginfo(pcl.shape)
 
         self.transform_pcl_coordsys(pcl)
 
@@ -99,34 +122,88 @@ class FenceDetector:
         self.pcl_filtered = pcl
 
         self.fence_pcl, self.ground_pcl = self.segment_fence_pcl(pcl)
+
+        points = []
+
+        for point in self.fence_pcl:
+            p = Point32()
+            p.x = point[1]
+            p.y = point[2]
+            p.z = point[0]
+
+            points.append(p)
+
+        msg = PointCloud()
+        msg.points = points
+        msg.header.frame_id = "camera_link"
+
+        self.segmented_pcl_pub.publish(msg)
         
         dist, ang, height = self.get_fence_pos(
                 self.fence_pcl,
                 self.ground_pcl
         )
+        rospy.loginfo(str(dist) + "\t" + str(ang))
 
-        if dist is not None:
-            self.dist_lock.acquire(True)
-            self.kf_dist.update(np.array([dist]))
-            self.dist_lock.release()
+        if (dist is not None):
+            self.dist = dist
+        if (ang is not None):
+            self.ang = ang
+        if (height is not None):
+            self.height = height
 
-        if ang is not None:
-            self.ang_lock.acquire(True)
-            self.kf_ang.update(np.array([ang]))
-            self.ang_lock.release()
+        #if dist is not None:
+        #    self.dist_lock.acquire(True)
+        #    self.kf_dist.update(np.array([dist]))
+        #    self.dist_lock.release()
 
-        if height is not None:
-            self.height_lock.acquire(True)
-            self.kf_height.update(np.array([height]))
-            #self.height = height
-            self.height_lock.release()
+        #if ang is not None:
+        #    self.ang_lock.acquire(True)
+        #    self.kf_ang.update(np.array([ang]))
+        #    self.ang_lock.release()
+
+        #if height is not None:
+        #    self.height_lock.acquire(True)
+        #    self.kf_height.update(np.array([height]))
+        #    #self.height = height
+        #    self.height_lock.release()
     
     def transform_pcl_coordsys(self, points):
+        def rm_pnt(dist):
+            a = 0.3
+            pct = 100 - 100 * a**dist
+            
+            n = randint(0, 100)
+
+            if (pct > n):
+                return True
+            else:
+                return False
+
+        points_msg = []
         for point in points:
             x, y, z = (point[0], point[1], point[2])
+
+            if rm_pnt(z):
+                del point
+                continue
+
             point[0] = z
             point[1] = x
             point[2] = y
+
+            p = Point32()
+            p.x = x #point[0]
+            p.y = y #point[1]
+            p.z = z #point[2]
+            points_msg.append(p)
+
+
+        msg = PointCloud()
+        msg.points = points_msg
+        msg.header.frame_id = "camera_link"
+
+        self.modified_pcl_pub.publish(msg)
 
     def start(self):
         self.plot_count = 0
@@ -134,21 +211,25 @@ class FenceDetector:
         while(True):
             self.rate.sleep()
 
-            self.dist_lock.acquire(True)
-            self.kf_dist.predict()
-            dist = np.copy(self.kf_dist.x)[0]
-            self.dist_lock.release()
+            #self.dist_lock.acquire(True)
+            #self.kf_dist.predict()
+            #dist = np.copy(self.kf_dist.x)[0]
+            #self.dist_lock.release()
 
-            self.ang_lock.acquire(True)
-            self.kf_ang.predict()
-            ang = np.copy(self.kf_ang.x)[0]
-            self.ang_lock.release()
+            #self.ang_lock.acquire(True)
+            #self.kf_ang.predict()
+            #ang = np.copy(self.kf_ang.x)[0]
+            #self.ang_lock.release()
 
-            self.height_lock.acquire(True)
-            self.kf_height.predict()
-            height = np.copy(self.kf_height.x)[0]
-            #height = self.height
-            self.height_lock.release()
+            #self.height_lock.acquire(True)
+            #self.kf_height.predict()
+            #height = np.copy(self.kf_height.x)[0]
+            ##height = self.height
+            #self.height_lock.release()
+
+            dist = self.dist
+            ang = self.ang
+            height = self.height
             
             msg = Vector3()
             msg.x = dist
@@ -157,20 +238,29 @@ class FenceDetector:
 
             self.pub.publish(msg)
 
-            if self.pcl is not None:
-                #self.visualize_detection(
-                #        self.pcl,
-                #        dist,
-                #        ang,
-                #        filename="/home/balint/" + str(self.plot_count) + ".png"
-                #)
-                self.visualize_segmentation(
-                        self.pcl_filtered,
-                        self.pcl_fence,
-                        self.pcl_ground,
-                        filename="/home/balint/" + str(self.plot_count) + ".png")
-                plt.clf()
-                self.plot_count += 1
+        
+            pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=ang)
+
+            pose.header.frame_id = "camera_link"
+
+            self.fence_pose_pub.publish(pose)
+
+
+
+            #if self.pcl is not None:
+            #    self.visualize_detection(
+            #            self.pcl,
+            #            dist,
+            #            ang,
+            #            filename="/home/balint/" + str(self.plot_count) + ".png"
+            #    )
+            #    self.visualize_segmentation(
+            #            self.pcl_filtered,
+            #            self.pcl_fence,
+            #            self.pcl_ground,
+            #            filename="plots/" + str(self.plot_count) + ".png")
+            #    plt.clf()
+            #    self.plot_count += 1
 
             if (rospy.is_shutdown()):
                 break
@@ -191,6 +281,13 @@ class FenceDetector:
         fence_pcl = point_cloud[
                 (point_cloud[:,0] >= mean_x - stdev_x) & 
                 (point_cloud[:,0] <= mean_x + stdev_x)]
+
+        mean_x = np.mean(fence_pcl[:,0])
+        stdev_x = np.std(fence_pcl[:,0])
+        fence_pcl = fence_pcl[
+                (fence_pcl[:,0] >= mean_x - stdev_x) & 
+                (fence_pcl[:,0] <= mean_x + stdev_x)]
+
         ground_pcl = point_cloud[
                 (point_cloud[:,0] < mean_x - stdev_x) & 
                 (point_cloud[:,1] < 0) &
