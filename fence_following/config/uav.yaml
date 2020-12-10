@@ -6,7 +6,7 @@ desiredDistance:            2
 distanceInverted:           False
 rotationInverted:           True
 forwardSpeed:               0.5
-timeToWaitForFenceSample:   0.1
+timeToWaitForFenceSample:   0.2
 
 # pointCloudSampler.py
 n_samples:                  5
@@ -16,7 +16,7 @@ init_dist:          2
 init_ang:           0
 min_dist_x:         1.1
 max_dist_x:         6
-height_thres:       -0.7
-min_fence_points:   50
+height_thres:       0.3
+min_fence_points:   200
 lp_alpha_dist:      0.1
 lp_alpha_ang:       0.1
