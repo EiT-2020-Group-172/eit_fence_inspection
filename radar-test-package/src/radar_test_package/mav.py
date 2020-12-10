@@ -62,7 +62,7 @@ class Mav():
         target_arr = point_to_arr(point)
         diff = target_arr - current
         diffsize = np.linalg.norm(diff)
-        max_dist = 2
+        max_dist = 1
         if diffsize < max_dist:
             return self.target_pose
         ratio = diffsize / max_dist
