@@ -142,18 +142,21 @@ class stateMachine():
 
         current_rot=quatToRotation(self.mav.current_pose.pose.orientation)
         if self.rotationInverted:
-            current_rot=current_rot*angleToRotation(-self.current_fence_pose.y)  # as dcm?
+            current_rot=current_rot*angleToRotation(-0.1*self.current_fence_pose.y)  # as dcm?
         else:
-            current_rot=current_rot*angleToRotation(self.current_fence_pose.y)  # as dcm?
+            current_rot=current_rot*angleToRotation(0.1*self.current_fence_pose.y)  # as dcm?
         current_rot_as_dcm=current_rot.as_dcm()
         
         #distanceToAdjust=current_rot_as_dcm*current_rot_as_dcm
         arr1 = np.array([[0, self.forwardSpeed, 0]])
+        
 
         if self.distanceInverted:
-            arr2 = np.array([[-distanceError, 0, 0]])
+            arr2 = np.array([[-0.15*distanceError, 0, 0]])
         else:
-            arr2 = np.array([[distanceError, 0, 0]])
+            arr2 = np.array([[0.15*distanceError, 0, 0]])
+        
+
         distanceToAdjust=arr2.dot(current_rot_as_dcm)+arr1.dot(current_rot_as_dcm)
         #distanceToAdjust=current_rot_as_dcm*[0,distanceError,0]#+current_rot_as_dcm*[0.5,0,0]
         #distanceToAdjust=current_rot*[0,distanceError,0]+current_rot*[0.5,0,0]
@@ -187,7 +190,7 @@ class stateMachine():
     def set_state(self, new_state):
         self.state = new_state
         rospy.logout("new state: " + new_state)
-
+    
     def setup_find_fence(self):
         self.timeSearchStarted = time.time()
         self.set_state("find_fence")
