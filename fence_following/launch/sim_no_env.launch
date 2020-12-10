@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <rosparam file="$(find fence_following)/config/uav.yaml"/>
+
+    <include file="$(find fence_following)/launch/fenceDetection.launch" />
+    <include file="$(find fence_following)/launch/state_machine.launch" />
+
+    <!--<node pkg="rviz" name="rviz" type="rviz" args="-d $(find radar-test-package)/launch/rviz/fenceDetection.rviz"/>-->
+</launch>

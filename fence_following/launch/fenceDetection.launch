@@ -5,10 +5,6 @@
 
     <rosparam file="$(find fence_following)/config/uav.yaml"/>
 
-    <include file="$(find fence_following)/launch/world_and_state.launch" />
-
     <node pkg="fence_following" type="pointCloudSampler.py" name="pointCloudSampler"/>
     <node pkg="fence_following" type="fenceDetector.py" name="fenceDetector"/>
-
-    <!--<node pkg="rviz" name="rviz" type="rviz" args="-d $(find radar-test-package)/launch/rviz/fenceDetection.rviz"/>-->
 </launch>

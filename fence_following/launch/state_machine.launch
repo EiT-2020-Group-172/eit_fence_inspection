@@ -1,7 +1,5 @@
 <?xml version="1.0"?>
 <launch>
     <rosparam file="$(find fence_following)/config/uav.yaml" />
-    <!--<include file="$(find radar-test-package)/launch/env.launch">
-    </include>-->
     <node name="sm" pkg="fence_following" type="stateMachine.py" output="screen"/>
 </launch>
