@@ -327,10 +327,10 @@ class FenceDetector:
 
         if fence_pcl.shape[0] >= self.min_fence_points:
             a, b, r2 = self.fit_line(fence_pcl)
-
-            if r2 >= self.min_r2_fence:
-                dist = b
-                ang = atan(a)
+            #print(r2)
+            #if r2 >= self.min_r2_fence:
+            dist = b
+            ang = atan(a)
 
         return dist, ang
 
