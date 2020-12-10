@@ -40,9 +40,7 @@ class stateMachine():
         self.endOfFenceReached = False
         self.breachDetected = False
         self.msgTimeout = False
-        self.timeLastMsg = 0
-        self.rotation = 0
-        self.poseAtDataLoss = PoseStamped()
+        self.timeLastMsg = 0.0
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
@@ -176,19 +174,23 @@ class stateMachine():
             setpointMsg=self.breachPose
             #self.mav.set_target_pose(self.mav.current_pose)
         #else:
+        
         self.mav.set_target_pose(setpointMsg)
 
         #self._setpoint_local_pub.publish(setpointMsg)
     def takeoff(self):
-        self.mav.set_target_pose(msgt.create_setpoint_message_xyz_yaw(0, 3, 1, yaw=-2))
+        self.mav.set_target_pose(msgt.create_setpoint_message_xyz_yaw(3, 2, 1, yaw=-2))
 
     def findFence(self):
-        self.mav.set_target_yaw(self.rotation)
-        self.rotation += 0.1
+        self.mav.set_target_yaw(msgt.orientation_to_yaw(self.mav.current_pose.pose.orientation) + 0.05)
 
     def set_state(self, new_state):
         self.state = new_state
         rospy.logout("new state: " + new_state)
+
+    def setup_find_fence(self):
+        self.timeSearchStarted = time.time()
+        self.set_state("find_fence")
 
     def loop(self):
         while self.isEndOfendFenceReached() is not True:
@@ -210,28 +212,26 @@ class stateMachine():
                     pass
                     #   rospy.loginfo("Vehicle armed")
             elif self.state == "off":
-                self.poseAtDataLoss =  self.mav.current_pose
                 self.takeoff()
                 self.set_state("waiting_to_arrive")
             
             elif self.state == "waiting_to_arrive":
                 if self.mav.has_arrived():
-                    self.rotation = 0
-                    self.timeSearchStarted = time.time()
-                    self.set_state("find_fence")
+                    self.setup_find_fence()
 
             elif self.state == "find_fence":
                 # to be implemented
                 self.findFence()
-                if self.rotation > 5:
-                    self.state == "land"
+                if (currentTime - self.timeSearchStarted) > 15:
+                    self.set_state("land")
                 if (self.timeSearchStarted < self.timeLastMsg):
                     self.set_state("fence_following")
+                    self.mav.set_target_yaw(msgt.orientation_to_yaw(self.mav.current_pose.pose.orientation))
+                    #rospy.sleep(10)
 
             elif self.state == "fence_following":
                 if (currentTime - self.timeLastMsg) > self.timeToWaitForFenceSample:
-                    self.set_state("find_fence")
-                    self.poseAtDataLoss =  self.mav.current_pose
+                    self.setup_find_fence()
                 else:
                     self._adjust_drone_pos()
 
