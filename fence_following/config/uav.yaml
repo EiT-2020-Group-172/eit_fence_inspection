@@ -17,7 +17,7 @@ init_ang:           0
 min_dist_x:         1.1
 max_dist_x:         6
 height_thresh:      0.5
-min_fence_points:   100
+min_fence_points:   50
 lp_alpha_dist:      0.1
 lp_alpha_ang:       0.1
-min_r2_fence:       0.5
+min_r2_fence:       0.2
