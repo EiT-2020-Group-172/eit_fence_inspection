@@ -232,7 +232,7 @@ class stateMachine():
                     self.state = "fence_following"
 
             elif self.state == "fence_following":
-                if (currentTime - self.timeLastMsg) > timeToWaitForFenceSample:
+                if (currentTime - self.timeLastMsg) > self.timeToWaitForFenceSample:
                     self.state = "find_fence"
                     self.poseAtDataLoss =  self.current_pose
                 else:
