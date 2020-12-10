@@ -265,7 +265,44 @@ class FenceDetector:
                 Y
         )
 
-        return beta[0], beta[1]
+        n = fence_pcl.shape[0]
+        Y_flat = Y.flatten()
+        y_bar = np.mean(Y_flat)
+
+        SST = np.sum(
+                np.power(
+                    np.subtract(
+                        Y_flat,
+                        y_bar
+                    ),
+                    2
+                )
+        )
+
+        X_flat = X.flatten()
+
+        Y_hat = np.add(
+                np.multiply(
+                    beta[0],
+                    X_flat
+                ),
+                beta[1]
+        )
+
+        SSReg = np.sum(
+                np.power(
+                    np.subtract(
+                        Y_hat,
+                        Y_bar
+                    ),
+                    2
+                )
+        )
+
+        r2 = SSReg / SST
+
+
+        return beta[0], beta[1], r2
 
     def get_fence_pos(
             self,
@@ -275,10 +312,11 @@ class FenceDetector:
         ang = None
 
         if fence_pcl.shape[0] >= self.min_fence_points:
-            a, b = self.fit_line(fence_pcl)
-            
-            dist = b
-            ang = atan(a)
+            a, b, r2 = self.fit_line(fence_pcl)
+
+            if r2 >= self.min_r2_fence:
+                dist = b
+                ang = atan(a)
 
         return dist, ang
 
