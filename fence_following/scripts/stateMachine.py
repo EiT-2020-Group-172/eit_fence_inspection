@@ -43,7 +43,7 @@ class stateMachine():
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
-        self.state = "off"
+        self.set_state("off")
         
         # load parameters:
 
@@ -174,6 +174,9 @@ class stateMachine():
     def takeoff(self):
         self.mav.set_target_pose(msgt.create_setpoint_message_xyz_yaw(0, 3, 1, yaw=-2))
 
+    def set_state(self, new_state):
+        self.state = new_state
+        rospy.logout("new state: " + new_state)
 
     def loop(self):
         while self.isEndOfendFenceReached() is not True:
@@ -194,15 +197,15 @@ class stateMachine():
                      #   rospy.loginfo("Vehicle armed")
                 elif self.state == "off":
                     self.takeoff()
-                    self.state = "waiting_to_arrive"
+                    self.set_state("waiting_to_arrive")
                 
                 elif self.state == "waiting_to_arrive":
                     if self.mav.has_arrived():
-                        self.state = "find_fence"
+                        self.set_state("find_fence")
 
                 elif self.state == "find_fence":
                     # to be implemented
-                    self.state = "fence_following"
+                    self.set_state("fence_following")
 
                 elif self.state == "fence_following":
                     self._adjust_drone_pos()
