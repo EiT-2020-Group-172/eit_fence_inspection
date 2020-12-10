@@ -229,7 +229,7 @@ class FenceDetector:
             self,
             point_cloud
     ):
-        return point_cloud[(point_cloud[:,0] >= MIN_DIST_X) & (point_cloud[:,0] <= MAX_DIST_X)]
+        return point_cloud[(point_cloud[:,0] >= self.min_dist_x) & (point_cloud[:,0] <= self.max_dist_x)]
 
     def segment_fence_pcl(
             self,
