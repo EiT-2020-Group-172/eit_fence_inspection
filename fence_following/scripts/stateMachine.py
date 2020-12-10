@@ -75,6 +75,12 @@ class stateMachine():
         else:
             print("rotation Inverted  parameter not found")
             self.rotationInverted = False
+
+        if rospy.has_param('/timeToWaitForFenceSample'):
+            self.timeToWaitForFenceSample = rospy.get_param('/timeToWaitForFenceSample')
+        else:
+            print("timeToWaitForFenceSample  parameter not found")
+            self.timeToWaitForFenceSample = 0.1
         # setup subscriber
 
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
@@ -207,26 +213,28 @@ class stateMachine():
                     pass
                     #   rospy.loginfo("Vehicle armed")
             elif self.state == "off":
-                self.poseAtDataLoss = self.current_pose
+                self.poseAtDataLoss =  self.current_pose
                 self.takeoff()
-                self.set_state("waiting_to_arrive")
+                self.state = "waiting_to_arrive"
             
             elif self.state == "waiting_to_arrive":
                 if self.mav.has_arrived():
                     self.rotation = 0
                     self.timeSearchStarted = time.time()
-                    self.set_state("find_fence")
+                    self.state = "find_fence"
 
             elif self.state == "find_fence":
                 # to be implemented
                 self.findFence()
+                if self.rotation > 5:
+                    self.state == "land"
                 if (self.timeSearchStarted < self.timeLastMsg):
-                    self.set_state("fence_following")
+                    self.state = "fence_following"
 
             elif self.state == "fence_following":
-                if (currentTime - self.timeLastMsg) > 0.5:
+                if (currentTime - self.timeLastMsg) > timeToWaitForFenceSample:
                     self.state = "find_fence"
-                    self.poseAtDataLoss = self.current_pose
+                    self.poseAtDataLoss =  self.current_pose
                 else:
                     self._adjust_drone_pos()
 

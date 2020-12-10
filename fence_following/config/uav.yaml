@@ -1,15 +1,30 @@
+# Simulation
+simulation:         True
+
 # stateMachine.py
-desiredDistance:    2
-distanceInverted:   False
-rotationInverted:   True
-forwardSpeed:       0.5
+desiredDistance:            2
+distanceInverted:           False
+rotationInverted:           True
+forwardSpeed:               0.5
+timeToWaitForFenceSample:   0.1
 
 # pointCloudSampler.py
-n_samples:          5
+n_samples:                  5
 
 # fenceDetector.py
+<<<<<<< HEAD
+init_dist:                  2
+init_ang:                   0
+min_dist_x:                 1.1
+max_dist_x:                 6
+height_thres:               -0.7
+=======
 init_dist:          2
 init_ang:           0
 min_dist_x:         1.1
 max_dist_x:         6
 height_thres:       -0.7
+min_fence_points:   50
+lp_alpha_dist:      0.1
+lp_alpha_ang:       0.1
+>>>>>>> e474a70839d8f9c5357bc1ef185fd3ec684b0afd
