@@ -20,3 +20,4 @@ height_thresh:      0.5
 min_fence_points:   100
 lp_alpha_dist:      0.1
 lp_alpha_ang:       0.1
+min_r2_fence:       0.5
