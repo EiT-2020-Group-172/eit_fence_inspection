@@ -2,13 +2,14 @@
 simulation:         True
 
 # stateMachine.py
-desiredDistance:    2
-distanceInverted:   False
-rotationInverted:   True
-forwardSpeed:       0.5
+desiredDistance:            2
+distanceInverted:           False
+rotationInverted:           True
+forwardSpeed:               0.5
+timeToWaitForFenceSample:   0.1
 
 # pointCloudSampler.py
-n_samples:          5
+n_samples:                  5
 
 # fenceDetector.py
 init_dist:          2

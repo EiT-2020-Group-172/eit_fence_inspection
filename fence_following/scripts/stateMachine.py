@@ -42,12 +42,12 @@ class stateMachine():
         self.msgTimeout = False
         self.timeLastMsg = 0
         self.rotation = 0
-        self.poseAtDataLoss
+        self.poseAtDataLoss = PoseStamped()
         self.current_pose = PoseStamped()
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
-        self.state = "off"
+        self.set_state("off")
         
         # load parameters:
 
@@ -75,6 +75,12 @@ class stateMachine():
         else:
             print("rotation Inverted  parameter not found")
             self.rotationInverted = False
+
+        if rospy.has_param('/timeToWaitForFenceSample'):
+            self.timeToWaitForFenceSample = rospy.get_param('/timeToWaitForFenceSample')
+        else:
+            print("timeToWaitForFenceSample  parameter not found")
+            self.timeToWaitForFenceSample = 0.1
         # setup subscriber
 
         self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
@@ -181,9 +187,11 @@ class stateMachine():
 
     def findFence(self):
         self.mav.set_target_yaw(self.rotation)
-        rotation += 0.1
+        self.rotation += 0.1
 
-
+    def set_state(self, new_state):
+        self.state = new_state
+        rospy.logout("new state: " + new_state)
 
     def loop(self):
         while self.isEndOfendFenceReached() is not True:
@@ -197,38 +205,40 @@ class stateMachine():
             #    self.last_request = rospy.Time.now()
             currentTime = time.time()
 
-                if self.mav.UAV_state.mode != "OFFBOARD":
-                    self.mav.set_mode(0, 'OFFBOARD')
-                    #rospy.loginfo("enabling offboard mode")
-                if not self.mav.UAV_state.armed:
-                    if self.mav.set_arming(True):
-                        pass
-                     #   rospy.loginfo("Vehicle armed")
-                elif self.state == "off":
+            if self.mav.UAV_state.mode != "OFFBOARD":
+                self.mav.set_mode(0, 'OFFBOARD')
+                #rospy.loginfo("enabling offboard mode")
+            if not self.mav.UAV_state.armed:
+                if self.mav.set_arming(True):
+                    pass
+                    #   rospy.loginfo("Vehicle armed")
+            elif self.state == "off":
+                self.poseAtDataLoss =  self.current_pose
+                self.takeoff()
+                self.state = "waiting_to_arrive"
+            
+            elif self.state == "waiting_to_arrive":
+                if self.mav.has_arrived():
+                    self.rotation = 0
+                    self.timeSearchStarted = time.time()
+                    self.state = "find_fence"
+
+            elif self.state == "find_fence":
+                # to be implemented
+                self.findFence()
+                if self.rotation > 5:
+                    self.state == "land"
+                if (self.timeSearchStarted < self.timeLastMsg):
+                    self.state = "fence_following"
+
+            elif self.state == "fence_following":
+                if (currentTime - self.timeLastMsg) > self.timeToWaitForFenceSample:
+                    self.state = "find_fence"
                     self.poseAtDataLoss =  self.current_pose
-                    self.takeoff()
-                    self.state = "waiting_to_arrive"
-                
-                elif self.state == "waiting_to_arrive":
-                    if self.mav.has_arrived():
-                        self.rotation = 0
-                        self.timeSearchStarted = time.time()
-                        self.state = "find_fence"
+                else:
+                    self._adjust_drone_pos()
 
-                elif self.state == "find_fence":
-                    # to be implemented
-                    self.findFence()
-                    if (self.timeSearchStarted < self.timeLastMsg)
-                        self.state = "fence_following"
-
-                elif self.state == "fence_following":
-                    if (currentTime - self.timeLastMsg) > 0.5:
-                        self.state = "find_fence"
-                        self.poseAtDataLoss =  self.current_pose
-                    else:
-                        self._adjust_drone_pos()
-
-                rospy.sleep(0.01)
+            rospy.sleep(0.01)
             
         
     def _state_callback(self, topic):
@@ -236,9 +246,6 @@ class stateMachine():
         self.UAV_state.connected = topic.connected
         self.UAV_state.mode = topic.mode
         self.UAV_state.guided = topic.guided
-        
-
-
 		
 	
 		
