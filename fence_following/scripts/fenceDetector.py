@@ -128,7 +128,12 @@ class FenceDetector:
 
         self.pcl_filtered = pcl
 
-        self.fence_pcl = self.segment_fence_pcl(pcl)
+        fence_pcl = self.segment_fence_pcl(pcl)
+
+        if (fence_pcl is None):
+            return
+
+        self.fence_pcl = fence_pcl
 
         points = []
 
@@ -240,6 +245,9 @@ class FenceDetector:
     ):
         # remove points below a certain height threshold from the camera
         point_cloud = point_cloud[(point_cloud[:,1] < (self.height_thresh))]
+
+        if (point_cloud.shape[0] < 2):
+            return None
 
         mean_x = np.mean(point_cloud[:,0])
         stdev_x = np.std(point_cloud[:,0])

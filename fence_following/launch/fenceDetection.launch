@@ -6,5 +6,5 @@
     <rosparam file="$(find fence_following)/config/uav.yaml"/>
 
     <node pkg="fence_following" type="pointCloudSampler.py" name="pointCloudSampler"/>
-    <node pkg="fence_following" type="fenceDetector.py" name="fenceDetector"/>
+    <node pkg="fence_following" type="fenceDetector.py" name="fenceDetector" output="screen"/>
 </launch>
