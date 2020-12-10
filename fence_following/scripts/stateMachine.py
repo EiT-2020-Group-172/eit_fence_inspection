@@ -215,13 +215,13 @@ class stateMachine():
             elif self.state == "off":
                 self.poseAtDataLoss =  self.current_pose
                 self.takeoff()
-                self.state = "waiting_to_arrive"
+                self.set_state("waiting_to_arrive")
             
             elif self.state == "waiting_to_arrive":
                 if self.mav.has_arrived():
                     self.rotation = 0
                     self.timeSearchStarted = time.time()
-                    self.state = "find_fence"
+                    self.set_state("find_fence")
 
             elif self.state == "find_fence":
                 # to be implemented
@@ -229,11 +229,11 @@ class stateMachine():
                 if self.rotation > 5:
                     self.state == "land"
                 if (self.timeSearchStarted < self.timeLastMsg):
-                    self.state = "fence_following"
+                    self.set_state("fence_following")
 
             elif self.state == "fence_following":
                 if (currentTime - self.timeLastMsg) > self.timeToWaitForFenceSample:
-                    self.state = "find_fence"
+                    self.set_state("find_fence")
                     self.poseAtDataLoss =  self.current_pose
                 else:
                     self._adjust_drone_pos()
