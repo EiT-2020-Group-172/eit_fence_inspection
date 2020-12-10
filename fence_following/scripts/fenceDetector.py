@@ -104,7 +104,12 @@ class FenceDetector:
         if rospy.has_param("/min_fence_points"):
             self.min_fence_points = rospy.get_param("/min_fence_points")
         else:
-            self.min_fence_points = 50
+            self.min_fence_points = 5
+
+        if rospy.has_param("/min_r2_fence"):
+            self.min_r2_fence = rospy.get_param("/min_r2_fence")
+        else:
+            self.min_r2_fence = 0.8
 
         self.height_treshold = -0.7
 
@@ -272,7 +277,6 @@ class FenceDetector:
                 Y
         )
 
-        n = fence_pcl.shape[0]
         Y_flat = Y.flatten()
         y_bar = np.mean(Y_flat)
 
@@ -286,28 +290,27 @@ class FenceDetector:
                 )
         )
 
-        X_flat = X.flatten()
+        X_flat = X[:,0].flatten()
 
         Y_hat = np.add(
                 np.multiply(
-                    beta[0],
-                    X_flat
+                    X_flat,
+                    beta[0]
                 ),
                 beta[1]
         )
 
-        SSReg = np.sum(
+        SSRes = np.sum(
                 np.power(
                     np.subtract(
-                        Y_hat,
-                        Y_bar
+                        Y_flat,
+                        Y_hat
                     ),
                     2
                 )
         )
 
-        r2 = SSReg / SST
-
+        r2 = 1 - (SSRes / SST)
 
         return beta[0], beta[1], r2
 
