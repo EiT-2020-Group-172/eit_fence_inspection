@@ -106,8 +106,6 @@ class FenceDetector:
         else:
             self.min_fence_points = 50
 
-        self.height_treshold = -0.7
-
     def on_new_msg(
             self,
             msg
@@ -236,9 +234,7 @@ class FenceDetector:
             point_cloud
     ):
         # remove points below a certain height threshold from the camera
-        for point in point_cloud:
-            if point[1] > -self.height_treshold:
-                del point
+        point_cloud = point_cloud[(point_cloud[:,1] > (-self.height_thresh))]
 
         mean_x = np.mean(point_cloud[:,0])
         stdev_x = np.std(point_cloud[:,0])
