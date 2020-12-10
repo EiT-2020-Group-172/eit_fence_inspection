@@ -104,7 +104,12 @@ class FenceDetector:
         if rospy.has_param("/min_fence_points"):
             self.min_fence_points = rospy.get_param("/min_fence_points")
         else:
-            self.min_fence_points = 50
+            self.min_fence_points = 5
+
+        if rospy.has_param("/min_r2_fence"):
+            self.min_r2_fence = rospy.get_param("/min_r2_fence")
+        else:
+            self.min_r2_fence = 0.8
 
     def on_new_msg(
             self,
@@ -268,7 +273,42 @@ class FenceDetector:
                 Y
         )
 
-        return beta[0], beta[1]
+        Y_flat = Y.flatten()
+        y_bar = np.mean(Y_flat)
+
+        SST = np.sum(
+                np.power(
+                    np.subtract(
+                        Y_flat,
+                        y_bar
+                    ),
+                    2
+                )
+        )
+
+        X_flat = X[:,0].flatten()
+
+        Y_hat = np.add(
+                np.multiply(
+                    X_flat,
+                    beta[0]
+                ),
+                beta[1]
+        )
+
+        SSRes = np.sum(
+                np.power(
+                    np.subtract(
+                        Y_flat,
+                        Y_hat
+                    ),
+                    2
+                )
+        )
+
+        r2 = 1 - (SSRes / SST)
+
+        return beta[0], beta[1], r2
 
     def get_fence_pos(
             self,
@@ -278,10 +318,11 @@ class FenceDetector:
         ang = None
 
         if fence_pcl.shape[0] >= self.min_fence_points:
-            a, b = self.fit_line(fence_pcl)
-            
-            dist = b
-            ang = atan(a)
+            a, b, r2 = self.fit_line(fence_pcl)
+
+            if r2 >= self.min_r2_fence:
+                dist = b
+                ang = atan(a)
 
         return dist, ang
 
