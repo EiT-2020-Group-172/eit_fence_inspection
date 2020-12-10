@@ -3,6 +3,8 @@
 	<!-- vim: set ft=xml noet : -->
 	<!-- base node launch file-->
 
+    <rosparam file="$(find fence_following)/config/uav.yaml"/>
+
     <include file="$(find fence_following)/launch/world_and_state.launch" />
 
     <node pkg="fence_following" type="pointCloudSampler.py" name="pointCloudSampler"/>

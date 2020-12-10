@@ -12,9 +12,6 @@ from random import randint
 
 from radar_test_package.message_tools import quaternion_from_euler, create_setpoint_message_xyz_yaw 
 
-MIN_DIST_X = 1.1
-MAX_DIST_X = 6
-
 class FenceDetector:
     def __init__(
             self,
@@ -22,15 +19,39 @@ class FenceDetector:
             in_topic="/point_cloud_sampler/sampled_pcl",
             out_topic="/fence_est",
             init_dist=2,
-            init_ang=0
+            init_ang=0,
+            min_dist_x=1.1,
+            max_dist_x=6,
+            height_thresh=-0.7
     ):
         self.node_name = node_name
         self.in_topic = in_topic
         self.out_topic = out_topic
 
-        self.dist = init_dist
+        if rospy.has_param("/init_dist"):
+            self.dist = rospy.get_param("/init_dist")
+        else:
+            self.dist = init_dist
 
-        self.ang = init_ang
+        if rospy.has_param("/init_ang"):
+            self.ang = rospy.get_param("/init_ang")
+        else:
+            self.ang = init_ang
+
+        if rospy.has_param("/min_dist_x"):
+            self.min_dist_x = rospy.get_param("/min_dist_x")
+        else:
+            self.min_dist_x = min_dist_x
+
+        if rospy.has_param("/max_dist_x"):
+            self.max_dist_x = rospy.get_param("/max_dist_x")
+        else:
+            self.max_dist_x = max_dist_x
+
+        if rospy.has_param("/height_thresh"):
+            self.height_thresh = rospy.get_param("/height_thresh")
+        else:
+            self.height_thresh = height_thresh
 
         rospy.init_node(self.node_name)
 

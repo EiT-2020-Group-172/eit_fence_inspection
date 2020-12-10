@@ -18,7 +18,11 @@ class PointCloudSampler:
         self.node_name = node_name
         self.in_topic = in_topic   
         self.out_topic = out_topic
-        self.sample_n = sample_n
+
+        if rospy.has_param("/n_samples"):
+            self.sample_n = rospy.get_param('/n_samples')
+        else:
+            self.sample_n = sample_n
 
         self.point_cloud_buffer = []
         self.buffer_pnt = -1
