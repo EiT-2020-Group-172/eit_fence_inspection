@@ -43,7 +43,6 @@ class stateMachine():
         self.timeLastMsg = 0
         self.rotation = 0
         self.poseAtDataLoss = PoseStamped()
-        self.current_pose = PoseStamped()
         self.current_fence_pose = Vector3()
         self.UAV_state = mavros_msgs.msg.State()
         self.mav = Mav()
@@ -83,7 +82,6 @@ class stateMachine():
             self.timeToWaitForFenceSample = 0.1
         # setup subscriber
 
-        self._local_position_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_position_callback)
         self._fenceDistance_sub = rospy.Subscriber('/fence_detector/fence_est', Vector3, self._fenceDistanceCallback) # change topic and message type
         self._state_sub = rospy.Subscriber('/mavros/state', State, self._state_callback)
         self._breach_sub = rospy.Subscriber('/breachDetected', Bool, self._breach_detected_callback)
@@ -109,13 +107,9 @@ class stateMachine():
         # check if drone has reached end of fence, maybe done using a gps?
         return False
 
-    def _local_position_callback(self, topic):
-        self.current_pose = topic
-        self.timeLastMsg = time.time()
-
     def _breach_detected_callback(self, msg = Bool()):
         if self.breachDetected == False and  msg.data:
-            self.breachPose = self.current_pose
+            self.breachPose = self.mav.current_pose
         self.breachDetected = msg.data
         
         
@@ -129,6 +123,9 @@ class stateMachine():
             pass
         else:
             self.current_fence_pose = data
+            self.timeLastMsg = time.time()
+
+        
             
 
     def _adjust_drone_pos(self):
@@ -145,7 +142,7 @@ class stateMachine():
         elif (self.current_fence_pose.y < -0.75):
             self.current_fence_pose.y = -0.75
 
-        current_rot=quatToRotation(self.current_pose.pose.orientation)
+        current_rot=quatToRotation(self.mav.current_pose.pose.orientation)
         if self.rotationInverted:
             current_rot=current_rot*angleToRotation(-self.current_fence_pose.y)  # as dcm?
         else:
@@ -164,8 +161,8 @@ class stateMachine():
         #distanceToAdjust=current_rot*[0,distanceError,0]+current_rot*[0.5,0,0]
         #print(distanceToAdjust)
         #print(current_rot_as_dcm)
-        setpointMsg.pose.position.x=self.current_pose.pose.position.x+distanceToAdjust[0,0]
-        setpointMsg.pose.position.y=self.current_pose.pose.position.y+distanceToAdjust[0,1]
+        setpointMsg.pose.position.x=self.mav.current_pose.pose.position.x+distanceToAdjust[0,0]
+        setpointMsg.pose.position.y=self.mav.current_pose.pose.position.y+distanceToAdjust[0,1]
         setpointMsg.pose.position.z=1#setpointMsg.pose.position.z+distanceToAdjust[0,2]
 
         current_rot_quat=current_rot.as_quat()
@@ -177,7 +174,7 @@ class stateMachine():
         #print(distanceToAdjust)
         if self.breachDetected:
             setpointMsg=self.breachPose
-            #self.mav.set_target_pose(self.current_pose)
+            #self.mav.set_target_pose(self.mav.current_pose)
         #else:
         self.mav.set_target_pose(setpointMsg)
 
@@ -213,7 +210,7 @@ class stateMachine():
                     pass
                     #   rospy.loginfo("Vehicle armed")
             elif self.state == "off":
-                self.poseAtDataLoss =  self.current_pose
+                self.poseAtDataLoss =  self.mav.current_pose
                 self.takeoff()
                 self.set_state("waiting_to_arrive")
             
@@ -234,7 +231,7 @@ class stateMachine():
             elif self.state == "fence_following":
                 if (currentTime - self.timeLastMsg) > self.timeToWaitForFenceSample:
                     self.set_state("find_fence")
-                    self.poseAtDataLoss =  self.current_pose
+                    self.poseAtDataLoss =  self.mav.current_pose
                 else:
                     self._adjust_drone_pos()
 
