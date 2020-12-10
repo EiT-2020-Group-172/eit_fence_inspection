@@ -91,8 +91,20 @@ class FenceDetector:
 
         self.last_dist_out = 0
         self.last_ang_out = 0
-        self.alpha_dist = 0.1
-        self.alpha_ang = 0.1
+        if rospy.has_param("/lp_alpha_dist"):
+            self.alpha_dist = rospy.get_param("/lp_alpha_dist")
+        else:
+            self.alpha_dist = 0.1
+
+        if rospy.has_param("/lp_alpha_ang"):
+            self.alpha_ang = rospy.get_param("/lp_alpha_ang")
+        else:
+            self.alpha_ang = 0.1
+
+        if rospy.has_param("/min_fence_points"):
+            self.min_fence_points = rospy.get_param("/min_fence_points")
+        else:
+            self.min_fence_points = 50
 
     def on_new_msg(
             self,
@@ -262,11 +274,7 @@ class FenceDetector:
         dist = None
         ang = None
 
-        if (fence_pcl.shape[0] == 1):
-            dist = fence_pcl[0,0]
-        elif (fence_pcl.shape[0] == 2):
-            dist = np.mean(fence_pcl[:,0])
-        elif (fence_pcl.shape[0] > 2):
+        if fence_pcl.shape[0] >= self.min_fence_points:
             a, b = self.fit_line(fence_pcl)
             
             dist = b
