@@ -111,13 +111,19 @@ class FenceDetector:
         else:
             self.min_r2_fence = 0.8
 
+        if rospy.has_param("/simulation"):
+            self.simulation = rospy.get_param("/simulation")
+        else:
+            self.simulation = True
+
     def on_new_msg(
             self,
             msg
     ):
         pcl = pointcloud2_to_xyz_array(msg)
 
-        pcl = self.transform_pcl_coordsys(pcl)
+        if self.simulation:
+            pcl = self.transform_pcl_coordsys(pcl)
 
         self.pcl = pcl
 
