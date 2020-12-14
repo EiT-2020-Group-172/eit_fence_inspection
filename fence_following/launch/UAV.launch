@@ -10,6 +10,10 @@
         <arg name="tgt_component" value="1"/>
     </include>
 
+    <!-- MAVROS -->
+    <include file="$(find ti_mmwave_rospkg)/launch/sensor.launch">
+    </include>
+
     <!-- Fence detection -->
     <node name="fence_detector" pkg="fence_following" type="pointCloudSampler.py"/>
     <node name="fence_detector" pkg="fence_following" type="fenceDetector.py"/>
