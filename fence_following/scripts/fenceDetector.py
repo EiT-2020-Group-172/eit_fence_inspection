@@ -5,12 +5,19 @@ import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_xyz_array
 from sensor_msgs.msg import PointCloud2, PointCloud
 from geometry_msgs.msg import Vector3, Point32, PoseStamped, Point, Quaternion
-from math import atan, cos, sin
+from gazebo_msgs.srv import GetModelState
+from math import atan, cos, sin, pi, sqrt
+inf = float('inf')
 import argparse
 import sys
 from random import randint
 
 from radar_test_package.message_tools import quaternion_from_euler, create_setpoint_message_xyz_yaw 
+
+
+import json
+
+
 
 class FenceDetector:
     def __init__(
@@ -69,6 +76,8 @@ class FenceDetector:
                 self.on_new_msg
         )
 
+        self.last_model_state = None
+
         self.modified_pcl_pub = rospy.Publisher(
                 self.node_name + "/modified_pcl",
                 PointCloud,
@@ -80,8 +89,21 @@ class FenceDetector:
                 PoseStamped,
                 queue_size=1)
 
+        self.fence_1_pose_pub = rospy.Publisher(
+                self.node_name + "/fence_1_pose",
+                PoseStamped)
+
+        self.fence_pose_unfiltered_pub = rospy.Publisher(
+                self.node_name + "/fence_pose_unfiltered",
+                PoseStamped)
+
         self.segmented_pcl_pub = rospy.Publisher(
                 self.node_name + "/segmented_pcl",
+                PointCloud,
+                queue_size=1)
+
+        self.far_pcl_pub = rospy.Publisher(
+                self.node_name + "/far_pcl",
                 PointCloud,
                 queue_size=1)
 
@@ -91,6 +113,7 @@ class FenceDetector:
 
         self.last_dist_out = 0
         self.last_ang_out = 0
+
         if rospy.has_param("/lp_alpha_dist"):
             self.alpha_dist = rospy.get_param("/lp_alpha_dist")
         else:
@@ -114,7 +137,87 @@ class FenceDetector:
         if rospy.has_param("/simulation"):
             self.simulation = rospy.get_param("/simulation")
         else:
-            self.simulation = True
+            self.simulation = False
+
+        if rospy.has_param("/use_ransac"):
+            self.use_ransac = rospy.get_param("/use_ransac")
+        else:
+            self.use_ransac = False
+
+        if rospy.has_param("/ransac_n_points"):
+            self.ransac_n_points = rospy.get_param("/ransac_n_points")
+        else:
+            self.ransac_n_points = 25
+
+        if rospy.has_param("/ransac_max_it"):
+            self.ransac_max_it = rospy.get_param("/ransac_max_it")
+        else:
+            self.ransac_max_it = 100
+
+        if rospy.has_param("/ransac_accept_r2"):
+            self.ransac_accept_r2 = rospy.get_param("/ransac_accept_r2")
+        else:
+            self.ransac_accept_r2 = 0.95
+
+        if rospy.has_param("/far_points_min_dist"):
+            self.far_points_min_dist = rospy.get_param("/far_points_min_dist")
+        else:
+            self.far_points_min_dist = 0.25
+
+        if rospy.has_param("/corner_ang_tol"):
+            self.corner_ang_tol = rospy.get_param("/corner_ang_tol")
+        else:
+            self.corner_ang_tol = 0.25
+
+        if rospy.has_param("/ransac_corner_accept_r2"):
+            self.ransac_corner_accept_r2 = rospy.get_param("/ransac_corner_accept_r2")
+        else:
+            self.ransac_corner_accept_r2 = 0.7
+
+    def publish_fence_pose(
+            self,
+            dist,
+            ang,
+            publisher
+    ):
+        pose = create_setpoint_message_xyz_yaw(0, 0, dist, yaw=0)
+        point = Point()
+        point.z = dist
+        point.x = 0
+        point.y = 0
+        quat = quaternion_from_euler(0, ang, 0)
+        q = Quaternion(quat[0], quat[1], quat[2], quat[3])
+        pose.pose.orientation = q
+        pose.pose.position = point
+
+        pose.header.frame_id = "camera_link"
+
+        publisher.publish(pose)
+
+    def publish_pointcloud(
+            self,
+            pcl,
+            publisher
+    ):
+        points = []
+
+        for point in pcl:
+            p = Point32()
+            p.x = -point[2]
+            p.y = point[1]
+            p.z = point[0]
+            #p.x = point[0]
+            #p.y = point[1]
+            #p.z = point[2]
+
+            points.append(p)
+
+        msg = PointCloud()
+        msg.points = points
+        #msg.header.frame_id = "ti_mmwave_pcl"
+        msg.header.frame_id = "camera_link"
+
+        publisher.publish(msg)
 
     def on_new_msg(
             self,
@@ -141,21 +244,26 @@ class FenceDetector:
 
         self.fence_pcl = fence_pcl
 
-        points = []
+        #points = []
 
-        for point in self.fence_pcl:
-            p = Point32()
-            p.x = -point[2]
-            p.y = point[1]
-            p.z = point[0]
+        #for point in self.fence_pcl:
+        #    p = Point32()
+        #    p.x = -point[2]
+        #    p.y = point[1]
+        #    p.z = point[0]
 
-            points.append(p)
+        #    points.append(p)
 
-        msg = PointCloud()
-        msg.points = points
-        msg.header.frame_id = "camera_link"
+        #msg = PointCloud()
+        #msg.points = points
+        #msg.header.frame_id = "camera_link"
 
-        self.segmented_pcl_pub.publish(msg)
+        #self.segmented_pcl_pub.publish(msg)
+
+        self.publish_pointcloud(
+                self.fence_pcl,
+                self.segmented_pcl_pub
+        )
         
         dist, ang = self.get_fence_pos(
                 self.fence_pcl
@@ -178,20 +286,12 @@ class FenceDetector:
             msg.z = 0 
 
             self.pub.publish(msg)
-        
-            pose = create_setpoint_message_xyz_yaw(0, 0, dist_out, yaw=0)
-            point = Point()
-            point.z = dist_out
-            point.x = 0
-            point.y = 0
-            quat = quaternion_from_euler(0, ang_out, 0)
-            q = Quaternion(quat[0], quat[1], quat[2], quat[3])
-            pose.pose.orientation = q
-            pose.pose.position = point
 
-            pose.header.frame_id = "camera_link"
-
-            self.fence_pose_pub.publish(pose)
+            self.publish_fence_pose(
+                    dist_out,
+                    ang_out,
+                    self.fence_pose_pub
+            )
 
     def transform_pcl_coordsys(self, points):
         def rm_pnt(dist):
@@ -220,6 +320,9 @@ class FenceDetector:
             p.x = x 
             p.y = y 
             p.z = z 
+            #p.x = z 
+            #p.y = y 
+            #p.z = -x 
             points_msg.append(p)
 
         msg = PointCloud()
@@ -288,32 +391,48 @@ class FenceDetector:
         )
 
         Y_flat = Y.flatten()
-        y_bar = np.mean(Y_flat)
+        X_flat = X[:,0].flatten()
+
+        r2 = self.calc_r2(
+                X_flat, 
+                Y_flat, 
+                beta[0], 
+                beta[1]
+        )
+
+        return beta[0], beta[1], r2
+
+    def calc_r2(
+            self,
+            X,
+            Y,
+            a,
+            b
+    ):
+        y_bar = np.mean(Y)
 
         SST = np.sum(
                 np.power(
                     np.subtract(
-                        Y_flat,
+                        Y,
                         y_bar
                     ),
                     2
                 )
         )
 
-        X_flat = X[:,0].flatten()
-
         Y_hat = np.add(
                 np.multiply(
-                    X_flat,
-                    beta[0]
+                    X,
+                    a
                 ),
-                beta[1]
+                b
         )
 
         SSRes = np.sum(
                 np.power(
                     np.subtract(
-                        Y_flat,
+                        Y,
                         Y_hat
                     ),
                     2
@@ -322,7 +441,175 @@ class FenceDetector:
 
         r2 = 1 - (SSRes / SST)
 
-        return beta[0], beta[1], r2
+        return r2
+
+    def ransac_fence(
+            self,
+            fence_pcl
+    ):
+        best_r2 = -inf
+        best_a = None
+        best_b = None
+
+        for i in range(self.ransac_max_it):
+            rand_indices = np.random.choice(
+                    fence_pcl.shape[0],
+                    size=self.ransac_n_points,
+                    replace=False
+            )
+            
+            points = fence_pcl[rand_indices,:]
+
+            a, b, r2 = self.fit_line(points)
+
+            if r2 > best_r2:
+                best_r2 = r2
+                best_a = a
+                best_b = b
+
+                #if r2 > self.ransac_accept_r2:
+                #    break
+
+        return best_a, best_b, best_r2
+
+    #def ransac_corner(
+    #        self,
+    #        fence_pcl
+    #):
+    #    best_a_1, best_b_1, best_a_2, best_b_2 = None, None, None, None
+    #    best_r2_1, best_r2_2 = -inf, -inf
+
+    #    for i in range(self.ransac_max_it):
+    #        rand_indices = np.random.choice(
+    #                fence_pcl.shape[0],
+    #                size=self.ransac_n_points,
+    #                replace=False
+    #        )
+    #        
+    #        points_1 = fence_pcl[rand_indices,:]
+
+    #        a_1, b_1, r2_1 = self.fit_line(points_1)
+
+    #        far_points = self.get_far_points(
+    #                fence_pcl,
+    #                a_1,
+    #                b_1
+    #        )
+
+    #        #self.publish_pointcloud(
+    #        #        far_points,
+    #        #        self.far_pcl_pub
+    #        #)
+
+
+    #        if far_points.shape[0] < self.ransac_n_points * 2:
+    #            continue
+
+    #        rand_indices_2 = np.random.choice(
+    #                far_points.shape[0],
+    #                #fence_pcl.shape[0],
+    #                size=self.ransac_n_points,
+    #                replace=False
+    #        )
+    #        
+    #        points_2 = far_points[rand_indices_2,:]
+    #        #points_2 = fence_pcl[rand_indices_2,:]
+
+    #        a_2, b_2, r2_2 = self.fit_line(points_2)
+
+    #        ang_1 = atan(a_1)
+    #        ang_2 = atan(a_2)
+    #        ang_diff = abs(ang_1 - ang_2)
+
+    #        if r2_1 > best_r2_1 and r2_2 > best_r2_2 and abs(ang_diff - pi/2) <= self.corner_ang_tol:
+    #            #print("ang1: " + str(ang_1) + "\tangf2: " + str(ang_2) + "\n\n")
+    #            best_a_1, best_b_1, best_a_2, best_b_2 = a_1, b_1, a_2, b_2
+    #            best_r2_1, best_r2_2 = r2_1, r2_2
+
+    #            #if best_r2_1 >= self.ransac_corner_accept_r2 and best_r2_2 >= self.ransac_corner_accept_r2:
+    #            #    break
+
+    #    return best_a_1, best_b_1, best_r2_1, best_a_2, best_b_2, best_r2_2
+
+    def get_far_points(
+            self,
+            fence_pcl,
+            a,
+            b
+    ):
+        closest_points_on_line_X = np.divide(
+                np.subtract(
+                    np.add(
+                        fence_pcl[:,2],
+                        a * fence_pcl[:,0]
+                    ),
+                    a * b
+                ),
+                a**2 + 1
+        )
+
+        closest_points_on_line_Y = np.add(
+                np.multiply(
+                    closest_points_on_line_X,
+                    a
+                ),
+                b
+        )
+
+        dist = np.sqrt(
+                np.add(
+                    np.square(
+                        np.subtract(
+                            closest_points_on_line_X,
+                            fence_pcl[:,2]
+                        )
+                    ),
+                    np.square(
+                        np.subtract(
+                            closest_points_on_line_Y,
+                            fence_pcl[:,0]
+                        )
+                    )
+                )
+        )
+
+        return fence_pcl[dist >= self.far_points_min_dist]
+
+    def dist_ang_fence(
+            self,
+            a,
+            b
+    ):
+        closest_x = (- a * b) / (a**2 + 1)
+        closest_y = a * closest_x + b
+        dist = sqrt(closest_x**2 + closest_y**2)
+        ang = atan(a)
+
+        return dist, ang
+
+    def dist_ang_corner(
+            self,
+            a_1,
+            b_1,
+            a_2,
+            b_2
+    ):
+        dist, ang = self.dist_ang_fence(a_1, b_1)
+        dist_c, ang_c = self.dist_ang_fence(a_2, b_2)
+
+        #if ang < 0:
+        #    ang = 2 * pi - ang
+        #if ang_c < 0:
+        #    ang_c = 2 * pi - ang_c
+
+        ang_ret = (ang + ang_c) / 2
+        #dist_ret = dist_c
+        #if (dist > dist_c):
+        #    dist_ret = dist
+
+        x_intersect
+
+        return (dist + dist_c) / 2, (ang + ang_c) / 2, dist_c, ang_c
 
     def get_fence_pos(
             self,
@@ -332,11 +619,58 @@ class FenceDetector:
         ang = None
 
         if fence_pcl.shape[0] >= self.min_fence_points:
-            a, b, r2 = self.fit_line(fence_pcl)
-            #print(r2)
-            #if r2 >= self.min_r2_fence:
-            dist = b
-            ang = atan(a)
+            a, b, r2 = None, None, None
+
+            if self.use_ransac:
+                a, b, r2 = self.ransac_fence(fence_pcl)
+
+                #far_points = self.get_far_points(
+                #        fence_pcl,
+                #        a,
+                #        b
+                #)
+
+                #if far_points.shape[0] > self.ransac_n_points * 2:  # Possibly second fence
+                #    a_1, b_1, r2_1, a_2, b_2, r2_2 = self.ransac_corner(fence_pcl)
+
+                #    if r2_1 >= self.ransac_corner_accept_r2 and r2_2 >= self.ransac_corner_accept_r2:    #   Fence corner found
+                #        dist, ang, dist_c, ang_c = self.dist_ang_corner(
+                #                a_1,
+                #                b_1,
+                #                a_2,
+                #                b_2
+                #        )
+
+                #        self.publish_fence_pose(
+                #                dist_c,
+                #                ang_c,
+                #                self.fence_1_pose_pub)
+                #    elif r2 >= self.ransac_accept_r2:
+                if r2 >= self.min_r2_fence:
+                    dist, ang = self.dist_ang_fence(
+                            a,
+                            b
+                    )
+                #elif r2 >= self.ransac_accept_r2:
+                #    dist, ang = self.dist_ang_fence(
+                #            a,
+                #            b
+                #    )
+            else:
+                a, b, r2 = self.fit_line(fence_pcl)
+
+                if r2 >= self.min_r2_fence:
+                    dist, ang = self.dist_ang_fence(
+                            a,
+                            b
+                    )
+
+        if(dist is not None and ang is not None):
+            self.publish_fence_pose(
+                    dist,
+                    ang,
+                    self.fence_pose_unfiltered_pub
+            )
 
         return dist, ang
 

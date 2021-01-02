@@ -1,5 +1,5 @@
 # Simulation
-simulation:         True
+simulation:                 True
 
 # stateMachine.py
 desiredDistance:            2
@@ -9,15 +9,24 @@ forwardSpeed:               0.5
 timeToWaitForFenceSample:   0.5
 
 # pointCloudSampler.py
-n_samples:                  3
+n_samples:                  1
 
 # fenceDetector.py
-init_dist:          2
-init_ang:           0
-min_dist_x:         1.1
-max_dist_x:         6
-height_thresh:      0.5
-min_fence_points:   50
-lp_alpha_dist:      0.5 
-lp_alpha_ang:       0.1
-min_r2_fence:       0.2
+init_dist:                  2
+init_ang:                   0
+min_dist_x:                 1.1
+max_dist_x:                 6
+height_thresh:              0.5
+min_fence_points:           25
+lp_alpha_dist:              0.25
+lp_alpha_ang:               0.1
+min_r2_fence:               0.2
+use_ransac:                 True
+ransac_n_points:            10
+ransac_max_it:              250
+ransac_under_r2:            0.95        # Only use RANSAC if initial r2 is under this value
+ransac_accept_r2:           0.95        # Acceptable r2 to stop RANSAC
+ransac_corner_accept_r2:    0.7         # Acceptable r2 when checking corners
+far_points_min_dist:        0.2       # Distance to fitted line for point to be considered outlier
+corner_outliers_n_points:   20          # number of outliers required for having detected a corner
+corner_ang_tol:             0.3145      # Tolerable deviation from 90 deg in corner

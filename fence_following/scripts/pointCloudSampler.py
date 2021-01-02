@@ -55,9 +55,13 @@ class PointCloudSampler:
         self.buffer_pnt %= self.sample_n
 
         if (len(self.point_cloud_buffer) == self.sample_n):
-            sampled_pcl = np.concatenate(tuple(self.point_cloud_buffer))
+            sampled_pcl = np.concatenate(tuple(self.point_cloud_buffer),axis=0)
+            pcl_msg = array_to_pointcloud2(sampled_pcl)
 
-            self.pub.publish(array_to_pointcloud2(sampled_pcl))
+            pcl_msg.header.frame_id = "ti_mmwave_pcl"
+
+            #self.pub.publish(array_to_pointcloud2(sampled_pcl))
+            self.pub.publish(pcl_msg)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Samples PointCloud2 msgs into combined msgs.")
