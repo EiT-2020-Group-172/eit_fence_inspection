@@ -5,7 +5,7 @@ import numpy as np
 from ros_numpy.point_cloud2 import pointcloud2_to_xyz_array
 from sensor_msgs.msg import PointCloud2, PointCloud
 from geometry_msgs.msg import Vector3, Point32, PoseStamped, Point, Quaternion
-from gazebo_msgs.srv import GetModelState
+#from gazebo_msgs.srv import GetModelState
 from math import atan, cos, sin, pi, sqrt
 inf = float('inf')
 import argparse
